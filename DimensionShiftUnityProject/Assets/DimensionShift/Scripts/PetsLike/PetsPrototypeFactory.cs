@@ -55,11 +55,13 @@ namespace DimensionShift.PetsLike
             Material blackMaterial = CreateMaterial("Ink Black", Color.black);
             Material switchMaterial = CreateMaterial("Switch Tile", new Color(0.12f, 0.52f, 1f));
             Material exitMaterial = CreateMaterial("Exit Tile", new Color(0.1f, 0.82f, 0.35f));
+            Material brickMaterial = CreateMaterial("Breakable Brick", new Color(0.72f, 0.22f, 0.16f));
+            Material boxMaterial = CreateMaterial("Push Box", new Color(0.68f, 0.43f, 0.18f));
 
             PetsLevelRuntime level = new GameObject("PETS Level Runtime").AddComponent<PetsLevelRuntime>();
             level.transform.SetParent(root.transform);
 
-            level.Build(definition, whiteMaterial, blackMaterial, switchMaterial, exitMaterial);
+            level.Build(definition, whiteMaterial, blackMaterial, switchMaterial, exitMaterial, brickMaterial, boxMaterial);
 
             if (addTutorialMarkers)
             {
@@ -96,6 +98,8 @@ namespace DimensionShift.PetsLike
             definition.SetCell(7, 1, PetsCellKind.BlackRegion);
             definition.SetCell(9, 1, PetsCellKind.SwitchTo2D);
             definition.SetCell(11, 1, PetsCellKind.Exit);
+            definition.SetCell(5, 3, PetsCellKind.BreakableBrick);
+            definition.SetCell(10, 3, PetsCellKind.PushBox);
 
             definition.SetCell(6, 2, PetsCellKind.BlackRegion);
             definition.SetCell(7, 2, PetsCellKind.BlackRegion);

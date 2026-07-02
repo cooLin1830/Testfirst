@@ -38,6 +38,7 @@ namespace DimensionShift.PetsLike
         [SerializeField] private float twoDBlackRegionFrontZ = -0.32f;
 
         private readonly Collider[] groundHits = new Collider[12];
+        private readonly RaycastHit[] brickHits = new RaycastHit[8];
         private readonly System.Collections.Generic.List<PetsGridCoord> nearbyBlackRegions = new System.Collections.Generic.List<PetsGridCoord>(8);
 
         private Rigidbody body;
@@ -248,6 +249,7 @@ namespace DimensionShift.PetsLike
             }
 
             body.velocity = velocity;
+            ResolveBrickHeadHit();
 
             PetsGridCoord nextCoord = ResolveTwoDRuleCoord();
             ApplyBlackRegionEdgeRules(ref nextCoord, previousCoord);
@@ -297,8 +299,17 @@ namespace DimensionShift.PetsLike
             move = Vector3.ClampMagnitude(move, 1f);
             Vector3 nextPosition = body.position + move * (topDownMoveSpeed * Time.fixedDeltaTime);
             PetsGridCoord nextCoord = level.WorldToGrid(nextPosition, PetsPerspectiveMode.TwoPointFiveD);
+            Vector2Int moveDirection = ResolveCardinalDirection(rawInput);
+            PetsGridCoord intendedCoord = currentGridCoord + new PetsGridCoord(moveDirection.x, moveDirection.y);
+            bool enteringIntendedCell = moveDirection != Vector2Int.zero && nextCoord.Equals(intendedCoord);
 
-            if (level.IsValidPlayerCell(nextCoord, PetsPerspectiveMode.TwoPointFiveD))
+            bool blockedByProp = level.IsTopDownBlockedByProp(nextCoord);
+            if (blockedByProp && enteringIntendedCell && level.TryPushBox(nextCoord, moveDirection))
+            {
+                blockedByProp = false;
+            }
+
+            if (!blockedByProp && level.IsValidPlayerCell(nextCoord, PetsPerspectiveMode.TwoPointFiveD))
             {
                 nextPosition.y = 0.55f;
                 body.MovePosition(nextPosition);
@@ -326,12 +337,17 @@ namespace DimensionShift.PetsLike
             PetsGridCoord adjacent = start + step;
             PetsGridCoord target = adjacent;
 
+            if (level.IsTopDownBlockedByProp(adjacent))
+            {
+                return;
+            }
+
             if (!level.IsValidPlayerCell(adjacent, PetsPerspectiveMode.TwoPointFiveD))
             {
                 if (level.IsTopDownJumpableHole(adjacent))
                 {
                     PetsGridCoord landing = adjacent + step;
-                    if (level.IsValidPlayerCell(landing, PetsPerspectiveMode.TwoPointFiveD))
+                    if (!level.IsTopDownBlockedByProp(landing) && level.IsValidPlayerCell(landing, PetsPerspectiveMode.TwoPointFiveD))
                     {
                         target = landing;
                     }
@@ -349,6 +365,49 @@ namespace DimensionShift.PetsLike
             }
 
             StartCoroutine(TopDownJumpArc(start, target));
+        }
+
+        private void ResolveBrickHeadHit()
+        {
+            if (body == null || body.velocity.y <= 0.05f)
+            {
+                return;
+            }
+
+            Bounds bounds = GetCapsuleBounds();
+            Vector3 headProbe = new Vector3(bounds.center.x, bounds.max.y - 0.02f, bounds.center.z);
+            Vector3 halfExtents = new Vector3(bounds.extents.x * 0.72f, 0.05f, 0.32f);
+            float castDistance = Mathf.Max(0.08f, body.velocity.y * Time.fixedDeltaTime + 0.1f);
+            int hitCount = Physics.BoxCastNonAlloc(
+                headProbe,
+                halfExtents,
+                Vector3.up,
+                brickHits,
+                Quaternion.identity,
+                castDistance,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider hit = brickHits[i].collider;
+                if (hit == null || hit == capsule || hit.transform.IsChildOf(transform))
+                {
+                    continue;
+                }
+
+                PetsBreakableBrick brick = hit.GetComponentInParent<PetsBreakableBrick>();
+                if (brick == null || brick.IsBroken)
+                {
+                    continue;
+                }
+
+                brick.Break();
+                Vector3 velocity = body.velocity;
+                velocity.y = Mathf.Min(velocity.y, 0f);
+                body.velocity = velocity;
+                return;
+            }
         }
 
         private IEnumerator TopDownJumpArc(PetsGridCoord start, PetsGridCoord target)

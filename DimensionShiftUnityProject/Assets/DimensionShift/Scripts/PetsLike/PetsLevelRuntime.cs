@@ -20,6 +20,8 @@ namespace DimensionShift.PetsLike
         private readonly Dictionary<Vector2Int, PetsCellKind> twoPointFiveDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsSwitchTile> switchTiles = new Dictionary<Vector2Int, PetsSwitchTile>();
         private readonly Dictionary<Vector2Int, GameObject> topDownPlatforms = new Dictionary<Vector2Int, GameObject>();
+        private readonly Dictionary<Vector2Int, PetsBreakableBrick> breakableBricks = new Dictionary<Vector2Int, PetsBreakableBrick>();
+        private readonly Dictionary<Vector2Int, PetsPushBox> pushBoxes = new Dictionary<Vector2Int, PetsPushBox>();
         private readonly List<GameObject> sharedObjects = new List<GameObject>();
         private readonly List<GameObject> twoDObjects = new List<GameObject>();
         private readonly List<GameObject> topDownObjects = new List<GameObject>();
@@ -33,7 +35,7 @@ namespace DimensionShift.PetsLike
         public PetsLevelDefinition Definition { get; private set; }
         public float CellSize => cellSize;
 
-        public void Build(PetsLevelDefinition definition, Material whiteMaterial, Material blackMaterial, Material switchMaterial, Material exitMaterial)
+        public void Build(PetsLevelDefinition definition, Material whiteMaterial, Material blackMaterial, Material switchMaterial, Material exitMaterial, Material brickMaterial, Material boxMaterial)
         {
             Definition = definition;
             cellSize = definition.CellSize;
@@ -41,6 +43,8 @@ namespace DimensionShift.PetsLike
             twoPointFiveDCells.Clear();
             switchTiles.Clear();
             topDownPlatforms.Clear();
+            breakableBricks.Clear();
+            pushBoxes.Clear();
             twoDObjects.Clear();
             topDownObjects.Clear();
             sharedObjects.Clear();
@@ -63,12 +67,12 @@ namespace DimensionShift.PetsLike
 
             foreach (KeyValuePair<Vector2Int, PetsCellKind> cell in twoDCells)
             {
-                BuildTwoDCell(cell.Key, cell.Value, blackMaterial);
+                BuildTwoDCell(cell.Key, cell.Value, blackMaterial, brickMaterial);
             }
 
             foreach (KeyValuePair<Vector2Int, PetsCellKind> cell in twoPointFiveDCells)
             {
-                BuildTwoPointFiveDCell(cell.Key, cell.Value, whiteMaterial, blackMaterial);
+                BuildTwoPointFiveDCell(cell.Key, cell.Value, whiteMaterial, blackMaterial, brickMaterial, boxMaterial);
             }
 
             BuildBlackRegionFills(twoDCells, PetsPerspectiveMode.TwoD, blackMaterial);
@@ -178,7 +182,9 @@ namespace DimensionShift.PetsLike
                 || kind == PetsCellKind.WhiteLine
                 || kind == PetsCellKind.SwitchTo2D
                 || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit;
+                || kind == PetsCellKind.Exit
+                || kind == PetsCellKind.BreakableBrick
+                || kind == PetsCellKind.PushBox;
         }
 
         public bool IsBlackRegion(PetsGridCoord coord)
@@ -251,6 +257,61 @@ namespace DimensionShift.PetsLike
             return GetCell(coord, currentMode) == PetsCellKind.Exit;
         }
 
+        public bool IsBreakableBrick(PetsGridCoord coord, PetsPerspectiveMode mode)
+        {
+            return GetCell(coord, mode) == PetsCellKind.BreakableBrick;
+        }
+
+        public bool IsTopDownBlockedByProp(PetsGridCoord coord)
+        {
+            if (pushBoxes.ContainsKey(coord.ToVector2Int()))
+            {
+                return true;
+            }
+
+            if (breakableBricks.TryGetValue(coord.ToVector2Int(), out PetsBreakableBrick brick) && brick != null && !brick.IsBroken)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool TryPushBox(PetsGridCoord boxCoord, Vector2Int direction)
+        {
+            if (direction == Vector2Int.zero)
+            {
+                return false;
+            }
+
+            Vector2Int boxKey = boxCoord.ToVector2Int();
+            if (!pushBoxes.TryGetValue(boxKey, out PetsPushBox box) || box == null)
+            {
+                return false;
+            }
+
+            PetsGridCoord target = boxCoord + new PetsGridCoord(direction.x, direction.y);
+            if (Definition == null || !Definition.Contains(target) || IsTopDownBlockedByProp(target))
+            {
+                return false;
+            }
+
+            if (!IsValidPlayerCell(target, PetsPerspectiveMode.TwoPointFiveD))
+            {
+                return false;
+            }
+
+            pushBoxes.Remove(boxKey);
+            pushBoxes[target.ToVector2Int()] = box;
+            box.MoveTo(target);
+            return true;
+        }
+
+        public void NotifyBrickBroken(PetsGridCoord coord)
+        {
+            breakableBricks.Remove(coord.ToVector2Int());
+        }
+
         public bool IsTopDownHole(PetsGridCoord coord)
         {
             return GetCell(coord, PetsPerspectiveMode.TwoPointFiveD) == PetsCellKind.BlackRegion || !IsValidPlayerCell(coord, PetsPerspectiveMode.TwoPointFiveD);
@@ -269,7 +330,9 @@ namespace DimensionShift.PetsLike
                 || kind == PetsCellKind.WhiteLine
                 || kind == PetsCellKind.SwitchTo2D
                 || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit;
+                || kind == PetsCellKind.Exit
+                || kind == PetsCellKind.BreakableBrick
+                || kind == PetsCellKind.PushBox;
         }
 
         public override void SetPerspectiveMode(PetsPerspectiveMode mode)
@@ -287,7 +350,7 @@ namespace DimensionShift.PetsLike
             return rootObject.transform;
         }
 
-        private void BuildTwoDCell(Vector2Int coord, PetsCellKind kind, Material blackMaterial)
+        private void BuildTwoDCell(Vector2Int coord, PetsCellKind kind, Material blackMaterial, Material brickMaterial)
         {
             if (kind == PetsCellKind.BlackRegion)
             {
@@ -301,6 +364,11 @@ namespace DimensionShift.PetsLike
                     false);
                 black2D.AddComponent<PetsBlackRegion2D>().Configure(this, PetsGridCoord.FromVector2Int(coord));
                 twoDObjects.Add(black2D);
+            }
+
+            if (kind == PetsCellKind.BreakableBrick)
+            {
+                BuildBreakableBrick(coord, brickMaterial);
             }
         }
 
@@ -318,7 +386,8 @@ namespace DimensionShift.PetsLike
                     continue;
                 }
 
-                if (cell.Value == PetsCellKind.BlackRegion)
+                if (cell.Value == PetsCellKind.BlackRegion
+                    || cell.Value == PetsCellKind.BreakableBrick)
                 {
                     continue;
                 }
@@ -393,7 +462,7 @@ namespace DimensionShift.PetsLike
             DrawMergedTopDownShapeVerticalEdges(westEdges, "West", material, 89);
         }
 
-        private void BuildTwoPointFiveDCell(Vector2Int coord, PetsCellKind kind, Material whiteMaterial, Material blackMaterial)
+        private void BuildTwoPointFiveDCell(Vector2Int coord, PetsCellKind kind, Material whiteMaterial, Material blackMaterial, Material brickMaterial, Material boxMaterial)
         {
             if (IsTopDownSurfaceKind(kind))
             {
@@ -421,6 +490,77 @@ namespace DimensionShift.PetsLike
                     false);
                 topDownObjects.Add(hole);
             }
+
+            if (kind == PetsCellKind.BreakableBrick && !breakableBricks.ContainsKey(coord))
+            {
+                BuildBreakableBrick(coord, brickMaterial);
+            }
+
+            if (kind == PetsCellKind.PushBox)
+            {
+                BuildPushBox(coord, boxMaterial);
+            }
+        }
+
+        private void BuildBreakableBrick(Vector2Int coord, Material material)
+        {
+            GameObject root = new GameObject($"Breakable Brick {coord.x},{coord.y}");
+            root.transform.SetParent(transform);
+            root.transform.position = Vector3.zero;
+
+            GameObject twoDView = CreateBox(
+                "2D Brick",
+                root.transform,
+                new Vector3(coord.x * cellSize, coord.y * cellSize, -0.36f),
+                new Vector3(cellSize * 0.88f, cellSize * 0.88f, 0.18f),
+                material,
+                true,
+                true);
+
+            GameObject topDownView = CreateBox(
+                "2.5D Brick",
+                root.transform,
+                new Vector3(coord.x * cellSize, 0.38f, coord.y * cellSize),
+                new Vector3(cellSize * 0.82f, 0.76f, cellSize * 0.82f),
+                material,
+                true,
+                true);
+
+            PetsBreakableBrick brick = root.AddComponent<PetsBreakableBrick>();
+            brick.Configure(this, PetsGridCoord.FromVector2Int(coord), twoDView, topDownView);
+            breakableBricks[coord] = brick;
+        }
+
+        private void BuildPushBox(Vector2Int coord, Material material)
+        {
+            GameObject root = new GameObject($"Push Box {coord.x},{coord.y}");
+            root.transform.SetParent(transform);
+            root.transform.position = Vector3.zero;
+
+            GameObject twoDView = CreateBox(
+                "2D Box",
+                root.transform,
+                new Vector3(coord.x * cellSize, coord.y * cellSize, -0.34f),
+                new Vector3(cellSize * 0.78f, cellSize * 0.78f, 0.2f),
+                material,
+                true,
+                true);
+
+            GameObject topDownView = CreateBox(
+                "2.5D Box",
+                root.transform,
+                new Vector3(coord.x * cellSize, 0.42f, coord.y * cellSize),
+                new Vector3(cellSize * 0.78f, 0.84f, cellSize * 0.78f),
+                material,
+                true,
+                true);
+            Rigidbody body = topDownView.AddComponent<Rigidbody>();
+            body.mass = 2.4f;
+            body.drag = 7f;
+            body.angularDrag = 6f;
+            PetsPushBox pushBox = root.AddComponent<PetsPushBox>();
+            pushBox.Configure(this, PetsGridCoord.FromVector2Int(coord), twoDView, topDownView, body);
+            pushBoxes[coord] = pushBox;
         }
 
         private void BuildBlackRegionFills(Dictionary<Vector2Int, PetsCellKind> source, PetsPerspectiveMode mode, Material material)
@@ -955,7 +1095,8 @@ namespace DimensionShift.PetsLike
                 || kind == PetsCellKind.BlackRegion
                 || kind == PetsCellKind.SwitchTo2D
                 || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit;
+                || kind == PetsCellKind.Exit
+                || kind == PetsCellKind.BreakableBrick;
         }
 
         private static bool IsTwoDClosedShapeKind(PetsCellKind kind)
@@ -965,7 +1106,8 @@ namespace DimensionShift.PetsLike
                 || kind == PetsCellKind.BlackRegion
                 || kind == PetsCellKind.SwitchTo2D
                 || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit;
+                || kind == PetsCellKind.Exit
+                || kind == PetsCellKind.BreakableBrick;
         }
 
         private static bool IsTopDownSurfaceKind(PetsCellKind kind)
@@ -974,7 +1116,9 @@ namespace DimensionShift.PetsLike
                 || kind == PetsCellKind.WhiteLine
                 || kind == PetsCellKind.SwitchTo2D
                 || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit;
+                || kind == PetsCellKind.Exit
+                || kind == PetsCellKind.BreakableBrick
+                || kind == PetsCellKind.PushBox;
         }
 
         private static GameObject CreateBox(string name, Transform parent, Vector3 position, Vector3 scale, Material material, bool solid, bool visible = true)

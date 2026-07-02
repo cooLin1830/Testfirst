@@ -15,6 +15,8 @@ namespace DimensionShiftEditor
         private static readonly Color Switch25DColor = new Color(0.12f, 0.52f, 1f);
         private static readonly Color Switch2DColor = new Color(0.15f, 0.85f, 0.38f);
         private static readonly Color ExitColor = new Color(1f, 0.45f, 0.12f);
+        private static readonly Color BrickColor = new Color(0.78f, 0.25f, 0.18f);
+        private static readonly Color BoxColor = new Color(0.72f, 0.48f, 0.22f);
         private static readonly Color SpawnColor = new Color(0.28f, 0.36f, 1f, 0.9f);
 
         private PetsEditableLevelAsset levelAsset;
@@ -125,6 +127,8 @@ namespace DimensionShiftEditor
                 DrawBrushButton("2.5D", PetsCellKind.SwitchToTwoPointFiveD);
                 DrawBrushButton("2D", PetsCellKind.SwitchTo2D);
                 DrawBrushButton("Exit", PetsCellKind.Exit);
+                DrawBrushButton("Brick", PetsCellKind.BreakableBrick);
+                DrawBrushButton("Box", PetsCellKind.PushBox);
                 DrawBrushButton("Erase", PetsCellKind.Empty);
                 if (GUILayout.Button("Spawn", GUILayout.Width(70f)))
                 {
@@ -211,7 +215,7 @@ namespace DimensionShiftEditor
                 {
                     alignment = TextAnchor.MiddleCenter,
                     normal = { textColor = kind == PetsCellKind.BlackRegion ? Color.white : Color.black },
-                    fontSize = 10
+                    fontSize = kind == PetsCellKind.PushBox ? 8 : 10
                 };
                 GUI.Label(rect, label, style);
             }
@@ -386,6 +390,10 @@ namespace DimensionShiftEditor
                     return Switch2DColor;
                 case PetsCellKind.Exit:
                     return ExitColor;
+                case PetsCellKind.BreakableBrick:
+                    return BrickColor;
+                case PetsCellKind.PushBox:
+                    return BoxColor;
                 default:
                     return WhiteCellColor;
             }
@@ -403,6 +411,10 @@ namespace DimensionShiftEditor
                     return "2D";
                 case PetsCellKind.Exit:
                     return "EXIT";
+                case PetsCellKind.BreakableBrick:
+                    return "BR";
+                case PetsCellKind.PushBox:
+                    return "BOX";
                 default:
                     return string.Empty;
             }

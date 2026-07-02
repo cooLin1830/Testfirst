@@ -14,7 +14,9 @@ namespace DimensionShift.PetsLike
         BlackRegion,
         SwitchTo2D,
         SwitchToTwoPointFiveD,
-        Exit
+        Exit,
+        BreakableBrick,
+        PushBox
     }
 
     public interface IPetsPerspectiveListener
