@@ -15,6 +15,9 @@ namespace DimensionShift.PetsLike
         [SerializeField] private Color normalColor = Color.white;
         [SerializeField] private Color invertedColor = Color.white;
 
+        private static Material sharedInvertMaterial;
+
+        private Material normalMaterial;
         private int facingDirection = 1;
 
         private void Awake()
@@ -60,7 +63,9 @@ namespace DimensionShift.PetsLike
 
             if (spriteRenderer != null)
             {
+                CacheNormalMaterial();
                 spriteRenderer.color = inside ? invertedColor : normalColor;
+                spriteRenderer.sharedMaterial = inside ? GetInvertMaterial() : normalMaterial;
             }
         }
 
@@ -74,7 +79,43 @@ namespace DimensionShift.PetsLike
             if (spriteRenderer == null)
             {
                 spriteRenderer = GetComponent<SpriteRenderer>();
+                if (spriteRenderer == null)
+                {
+                    spriteRenderer = GetComponentInChildren<SpriteRenderer>(true);
+                }
             }
+
+            CacheNormalMaterial();
+        }
+
+        private void CacheNormalMaterial()
+        {
+            if (spriteRenderer == null || normalMaterial != null)
+            {
+                return;
+            }
+
+            normalMaterial = spriteRenderer.sharedMaterial;
+        }
+
+        private static Material GetInvertMaterial()
+        {
+            if (sharedInvertMaterial != null)
+            {
+                return sharedInvertMaterial;
+            }
+
+            Shader shader = Shader.Find("DimensionShift/PETS Sprite Invert");
+            if (shader == null)
+            {
+                shader = Shader.Find("Sprites/Default");
+            }
+
+            sharedInvertMaterial = new Material(shader)
+            {
+                name = "PETS Sprite Invert"
+            };
+            return sharedInvertMaterial;
         }
     }
 }

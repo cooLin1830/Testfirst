@@ -16,7 +16,7 @@ namespace DimensionShift.PetsLike
         [Header("2D Movement")]
         [SerializeField] private float twoDMoveSpeed = 6f;
         [SerializeField] private float twoDAcceleration = 35f;
-        [SerializeField] private float twoDJumpVelocity = 7f;
+        [SerializeField] private float twoDJumpVelocity = 7.25f;
         [SerializeField] private float twoDJumpUpGravityScale = 1.25f;
         [SerializeField] private float twoDJumpDownGravityScale = 2.2f;
         [SerializeField] private float twoDWhiteStripClimbSpeed = 4.6f;
