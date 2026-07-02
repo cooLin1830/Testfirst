@@ -8,9 +8,9 @@ namespace DimensionShiftEditor
     public sealed class PetsLevelPainterWindow : EditorWindow
     {
         private const float CellPixels = 24f;
-        private static readonly Color GridColor = new Color(0.72f, 0.72f, 0.68f);
-        private static readonly Color PaperColor = new Color(0.98f, 0.98f, 0.96f);
-        private static readonly Color WhiteCellColor = new Color(1f, 1f, 1f);
+        private static readonly Color GridColor = new Color(0.62f, 0.62f, 0.56f);
+        private static readonly Color PaperColor = new Color(0.9f, 0.9f, 0.86f);
+        private static readonly Color WhiteCellColor = new Color(0.86f, 0.94f, 1f);
         private static readonly Color BlackCellColor = new Color(0.03f, 0.03f, 0.03f);
         private static readonly Color Switch25DColor = new Color(0.12f, 0.52f, 1f);
         private static readonly Color Switch2DColor = new Color(0.15f, 0.85f, 0.38f);
@@ -207,7 +207,20 @@ namespace DimensionShiftEditor
                 return;
             }
 
-            EditorGUI.DrawRect(new Rect(rect.x + 1f, rect.y + 1f, rect.width - 2f, rect.height - 2f), ColorFor(kind));
+            Rect fillRect = new Rect(rect.x + 1f, rect.y + 1f, rect.width - 2f, rect.height - 2f);
+            Rect labelRect = rect;
+            if (IsPropKind(kind))
+            {
+                EditorGUI.DrawRect(fillRect, WhiteCellColor);
+                Rect propRect = new Rect(rect.x + rect.width * 0.22f, rect.y + rect.height * 0.22f, rect.width * 0.56f, rect.height * 0.56f);
+                EditorGUI.DrawRect(propRect, ColorFor(kind));
+                labelRect = propRect;
+            }
+            else
+            {
+                EditorGUI.DrawRect(fillRect, ColorFor(kind));
+            }
+
             string label = LabelFor(kind);
             if (!string.IsNullOrEmpty(label))
             {
@@ -217,7 +230,7 @@ namespace DimensionShiftEditor
                     normal = { textColor = kind == PetsCellKind.BlackRegion ? Color.white : Color.black },
                     fontSize = kind == PetsCellKind.PushBox ? 8 : 10
                 };
-                GUI.Label(rect, label, style);
+                GUI.Label(labelRect, label, style);
             }
         }
 
@@ -397,6 +410,12 @@ namespace DimensionShiftEditor
                 default:
                     return WhiteCellColor;
             }
+        }
+
+        private static bool IsPropKind(PetsCellKind kind)
+        {
+            return kind == PetsCellKind.BreakableBrick
+                || kind == PetsCellKind.PushBox;
         }
 
         private static string LabelFor(PetsCellKind kind)

@@ -170,6 +170,11 @@ namespace DimensionShift.PetsLike
             PetsCellKind kind = GetCell(coord, mode);
             if (mode == PetsPerspectiveMode.TwoD)
             {
+                if (kind == PetsCellKind.BreakableBrick)
+                {
+                    return !IsBreakableBrickBlocking(coord);
+                }
+
                 return kind == PetsCellKind.WhiteInterior
                     || kind == PetsCellKind.WhiteLine
                     || kind == PetsCellKind.BlackRegion
@@ -269,12 +274,19 @@ namespace DimensionShift.PetsLike
                 return true;
             }
 
-            if (breakableBricks.TryGetValue(coord.ToVector2Int(), out PetsBreakableBrick brick) && brick != null && !brick.IsBroken)
+            if (IsBreakableBrickBlocking(coord))
             {
                 return true;
             }
 
             return false;
+        }
+
+        private bool IsBreakableBrickBlocking(PetsGridCoord coord)
+        {
+            return breakableBricks.TryGetValue(coord.ToVector2Int(), out PetsBreakableBrick brick)
+                && brick != null
+                && !brick.IsBroken;
         }
 
         public bool TryPushBox(PetsGridCoord boxCoord, Vector2Int direction)
@@ -386,8 +398,7 @@ namespace DimensionShift.PetsLike
                     continue;
                 }
 
-                if (cell.Value == PetsCellKind.BlackRegion
-                    || cell.Value == PetsCellKind.BreakableBrick)
+                if (cell.Value == PetsCellKind.BlackRegion)
                 {
                     continue;
                 }
@@ -1096,7 +1107,8 @@ namespace DimensionShift.PetsLike
                 || kind == PetsCellKind.SwitchTo2D
                 || kind == PetsCellKind.SwitchToTwoPointFiveD
                 || kind == PetsCellKind.Exit
-                || kind == PetsCellKind.BreakableBrick;
+                || kind == PetsCellKind.BreakableBrick
+                || kind == PetsCellKind.PushBox;
         }
 
         private static bool IsTwoDClosedShapeKind(PetsCellKind kind)
@@ -1107,7 +1119,8 @@ namespace DimensionShift.PetsLike
                 || kind == PetsCellKind.SwitchTo2D
                 || kind == PetsCellKind.SwitchToTwoPointFiveD
                 || kind == PetsCellKind.Exit
-                || kind == PetsCellKind.BreakableBrick;
+                || kind == PetsCellKind.BreakableBrick
+                || kind == PetsCellKind.PushBox;
         }
 
         private static bool IsTopDownSurfaceKind(PetsCellKind kind)

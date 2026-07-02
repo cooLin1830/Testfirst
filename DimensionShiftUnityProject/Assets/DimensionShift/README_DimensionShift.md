@@ -47,7 +47,7 @@ This gives stable collision callbacks and makes dimension-aware props much easie
 - Hidden physics bodies: colliders remain active, but their generated cube renderers are disabled.
 - Connected black regions and 2.5D holes use merged outer ink outlines, so adjacent black cells do not show internal grid seams.
 - 2.5D jump arcs can cross a one-cell black hole or one-cell empty gap when the landing cell is valid.
-- Bricks and boxes are generated one cell at a time. Adjacent brick/box cells remain separate props and are not merged into a larger shape.
+- Bricks and boxes are generated one cell at a time on top of an implied white terrain cell. Adjacent brick/box cells remain separate props and are not merged into a larger shape.
 - Bricks can be broken only in 2D by jumping into them from below. In 2.5D they are solid tall blocks.
 - Boxes are static in 2D. In 2.5D they become tall pushable blocks that the player can shove one grid cell at a time.
 
@@ -61,6 +61,6 @@ This gives stable collision callbacks and makes dimension-aware props much easie
 - Scene binding is stored on a `DimensionPrototypeBootstrap` component in that scene. Its `levelKind` is set to `EditableAsset`, and its `editableLevel` reference points to the map asset for that scene.
 - White cells become closed 2D walkable regions and flattened 2.5D platforms.
 - Black cells are enterable/inverting regions in 2D and holes in 2.5D.
-- `Brick` paints a one-cell breakable brick.
-- `Box` paints a one-cell pushable box.
+- `Brick` paints a one-cell breakable brick on a white terrain cell.
+- `Box` paints a one-cell pushable box on a white terrain cell.
 - Switch, exit, and spawn cells are painted from the same editor window.
