@@ -18,7 +18,8 @@ namespace DimensionShift.PetsLike
         BreakableBrick,
         PushBox,
         BouncePad,
-        HeadBreakBox
+        HeadBreakBox,
+        Star
     }
 
     public enum PetsPropKind
@@ -26,7 +27,8 @@ namespace DimensionShift.PetsLike
         None,
         BreakableBrick,
         PushBox,
-        HeadBreakBox
+        HeadBreakBox,
+        Star
     }
 
     public interface IPetsPerspectiveListener

@@ -1,9 +1,16 @@
 using UnityEngine;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 namespace DimensionShift.PetsLike
 {
     public static class PetsPrototypeFactory
     {
+        private const string Player2DVisualPrefabPath = "Assets/Art/2d/player/Player2DVisual.prefab";
+        private const string Player25DCharacterPath = "Assets/Art/3D/character.fbx";
+
         public static GameObject Build(PetsPrototypeLevelKind levelKind)
         {
             return Build(levelKind, null);
@@ -103,6 +110,8 @@ namespace DimensionShift.PetsLike
             definition.SetProp(5, 3, PetsPropKind.BreakableBrick);
             definition.SetProp(10, 3, PetsPropKind.PushBox);
             definition.SetProp(6, 4, PetsPropKind.HeadBreakBox);
+            definition.SetProp(6, 1, PetsPropKind.Star);
+            definition.SetProp(9, 3, PetsPropKind.Star);
 
             definition.SetCell(6, 2, PetsCellKind.BlackRegion);
             definition.SetCell(7, 2, PetsCellKind.BlackRegion);
@@ -137,6 +146,8 @@ namespace DimensionShift.PetsLike
             definition.SetCell(28, 8, PetsCellKind.SwitchTo2D);
             definition.SetCell(34, 7, PetsCellKind.BlackRegion);
             definition.SetCell(35, 8, PetsCellKind.Exit);
+            definition.SetProp(12, 3, PetsPropKind.Star);
+            definition.SetProp(26, 8, PetsPropKind.Star);
 
             return definition;
         }
@@ -281,15 +292,84 @@ namespace DimensionShift.PetsLike
             solidBody.GetComponent<Renderer>().sharedMaterial = playerMaterial;
             RemoveGeneratedCollider(solidBody.GetComponent<Collider>());
 
+            Renderer solidBodyRenderer = solidBody.GetComponent<Renderer>();
+            GameObject art25DVisual = CreatePlayer25DVisual(twoPointFiveDVisual.transform);
+            if (art25DVisual != null)
+            {
+                solidBodyRenderer.enabled = false;
+            }
+
+            GameObject artTwoDVisual = CreatePlayerArtVisual(player);
+            if (artTwoDVisual != null)
+            {
+                twoDVisual.SetActive(false);
+            }
+
             Renderer[] renderers =
             {
                 flatBody.GetComponent<Renderer>(),
                 flatHead.GetComponent<Renderer>(),
-                solidBody.GetComponent<Renderer>()
+                solidBodyRenderer
             };
 
             PetsPlayerVisualRig rig = player.gameObject.AddComponent<PetsPlayerVisualRig>();
-            rig.Configure(twoDVisual, twoPointFiveDVisual, renderers, new Color(0.08f, 0.08f, 0.08f), Color.white);
+            rig.Configure(artTwoDVisual != null ? artTwoDVisual : twoDVisual, twoPointFiveDVisual, renderers, new Color(0.08f, 0.08f, 0.08f), Color.white);
+        }
+
+        private static GameObject CreatePlayerArtVisual(Transform player)
+        {
+#if UNITY_EDITOR
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Player2DVisualPrefabPath);
+            if (prefab == null)
+            {
+                return null;
+            }
+
+            GameObject instance = Object.Instantiate(prefab, player);
+            instance.name = "Player2DVisual";
+            instance.transform.localPosition = new Vector3(0f, 0f, -0.58f);
+            instance.transform.localRotation = Quaternion.identity;
+
+            if (instance.GetComponent<PetsPlayer2DAnimator>() == null)
+            {
+                instance.AddComponent<PetsPlayer2DAnimator>();
+            }
+
+            return instance;
+#else
+            return null;
+#endif
+        }
+
+        private static GameObject CreatePlayer25DVisual(Transform parent)
+        {
+#if UNITY_EDITOR
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Player25DCharacterPath);
+            if (prefab == null)
+            {
+                return null;
+            }
+
+            GameObject instance = Object.Instantiate(prefab, parent);
+            instance.name = "Character FBX Visual";
+            instance.transform.localPosition = new Vector3(0f, -0.54f, 0f);
+            instance.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            instance.transform.localScale = Vector3.one;
+
+            RemoveGeneratedColliders(instance);
+            return instance;
+#else
+            return null;
+#endif
+        }
+
+        private static void RemoveGeneratedColliders(GameObject root)
+        {
+            Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                RemoveGeneratedCollider(colliders[i]);
+            }
         }
 
         private static void RemoveGeneratedCollider(Collider collider)

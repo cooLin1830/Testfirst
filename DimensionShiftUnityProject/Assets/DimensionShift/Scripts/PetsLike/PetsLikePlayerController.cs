@@ -11,11 +11,14 @@ namespace DimensionShift.PetsLike
         [SerializeField] private PetsLevelRuntime level;
         [SerializeField] private Renderer bodyRenderer;
         [SerializeField] private PetsPlayerVisualRig visualRig;
+        [SerializeField] private PetsPlayer2DAnimator twoDAnimator;
 
         [Header("2D Movement")]
         [SerializeField] private float twoDMoveSpeed = 6f;
         [SerializeField] private float twoDAcceleration = 35f;
-        [SerializeField] private float twoDJumpVelocity = 7.5f;
+        [SerializeField] private float twoDJumpVelocity = 7f;
+        [SerializeField] private float twoDJumpUpGravityScale = 1.25f;
+        [SerializeField] private float twoDJumpDownGravityScale = 2.2f;
         [SerializeField] private float twoDWhiteStripClimbSpeed = 4.6f;
         [SerializeField] private float twoDGroundCheckRadius = 0.22f;
         [SerializeField] private float twoDGroundCheckDistance = 0.14f;
@@ -38,7 +41,9 @@ namespace DimensionShift.PetsLike
         [SerializeField] private float twoDDefaultZ = 0f;
         [SerializeField] private float twoDBlackRegionFrontZ = -0.32f;
 
-        private readonly Collider[] groundHits = new Collider[12];
+        private static PhysicMaterial noFrictionMaterial;
+
+        private readonly RaycastHit[] groundHits = new RaycastHit[12];
         private readonly RaycastHit[] brickHits = new RaycastHit[8];
         private readonly System.Collections.Generic.List<PetsGridCoord> nearbyBlackRegions = new System.Collections.Generic.List<PetsGridCoord>(8);
 
@@ -65,6 +70,8 @@ namespace DimensionShift.PetsLike
         public PetsGridCoord CurrentGridCoord => currentGridCoord;
         public bool InBlackRegion => inBlackRegion;
         public bool ReachedExit => reachedExit;
+        public int CollectedStars => level != null ? level.CollectedStars : 0;
+        public int TotalStars => level != null ? level.TotalStars : 0;
 
         public void Configure(PetsLevelRuntime levelRuntime, PetsGridCoord spawn)
         {
@@ -73,6 +80,7 @@ namespace DimensionShift.PetsLike
             capsule = GetComponent<CapsuleCollider>();
             bodyRenderer = bodyRenderer != null ? bodyRenderer : GetComponentInChildren<Renderer>();
             visualRig = visualRig != null ? visualRig : GetComponentInChildren<PetsPlayerVisualRig>();
+            twoDAnimator = twoDAnimator != null ? twoDAnimator : GetComponentInChildren<PetsPlayer2DAnimator>(true);
             SnapToGridCoord(spawn, PetsPerspectiveMode.TwoD);
             RecordSafePosition();
         }
@@ -98,9 +106,15 @@ namespace DimensionShift.PetsLike
                 visualRig = GetComponentInChildren<PetsPlayerVisualRig>();
             }
 
+            if (twoDAnimator == null)
+            {
+                twoDAnimator = GetComponentInChildren<PetsPlayer2DAnimator>(true);
+            }
+
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             body.constraints = RigidbodyConstraints.FreezeRotation;
+            ConfigureCapsuleFriction();
         }
 
         private void Update()
@@ -167,6 +181,8 @@ namespace DimensionShift.PetsLike
                 body.velocity = Vector3.zero;
                 body.angularVelocity = Vector3.zero;
             }
+
+            UpdateTwoDAnimator();
         }
 
         public void SnapToGridCoord(PetsGridCoord coord, PetsPerspectiveMode mode)
@@ -212,12 +228,17 @@ namespace DimensionShift.PetsLike
                 visualRig.SetBlackRegionState(inBlackRegion);
             }
 
+            if (twoDAnimator != null)
+            {
+                twoDAnimator.SetBlackRegionState(inBlackRegion);
+            }
+
             ApplyTwoDLayerDepth();
         }
 
         public void MarkReachedExit()
         {
-            if (level != null && level.IsExit(currentGridCoord))
+            if (level != null && level.CanReachExit(currentGridCoord))
             {
                 reachedExit = true;
                 body.velocity = Vector3.zero;
@@ -301,6 +322,11 @@ namespace DimensionShift.PetsLike
                 }
             }
 
+            if (!climbingWhiteStrip)
+            {
+                ApplyTwoDJumpGravity(ref velocity);
+            }
+
             SetTwoDGravity(!climbingWhiteStrip);
             body.velocity = velocity;
             ResolveBrickHeadHit();
@@ -333,6 +359,7 @@ namespace DimensionShift.PetsLike
                 RespawnAtLastSafePosition();
             }
 
+            UpdateTwoDAnimator();
             CapturePreviousTwoDBounds();
         }
 
@@ -456,6 +483,7 @@ namespace DimensionShift.PetsLike
 
             Vector3 snapTarget = level.GridToTopDownWorld(currentGridCoord, 0.55f);
             body.position = Vector3.Lerp(body.position, snapTarget, topDownStepSnap * Time.fixedDeltaTime * 0.25f);
+            UpdateTwoDAnimator();
         }
 
         private void TryTopDownJump(Vector2Int direction)
@@ -567,6 +595,7 @@ namespace DimensionShift.PetsLike
             currentGridCoord = target;
             isArcJumping = false;
             RecordSafePosition();
+            UpdateTwoDAnimator();
         }
 
         private void TrySwitchMode()
@@ -598,7 +627,24 @@ namespace DimensionShift.PetsLike
             standingOnBlackBottomEdge = false;
             currentGridCoord = level != null ? ResolveRuleCoord() : currentGridCoord;
             SetBlackRegionState(level != null && level.IsBlackRegion(currentGridCoord));
+            UpdateTwoDAnimator();
             CapturePreviousTwoDBounds();
+        }
+
+        private void UpdateTwoDAnimator()
+        {
+            if (twoDAnimator == null)
+            {
+                twoDAnimator = GetComponentInChildren<PetsPlayer2DAnimator>(true);
+            }
+
+            if (twoDAnimator == null || body == null)
+            {
+                return;
+            }
+
+            bool grounded = isGrounded2D || standingOnBlackTopEdge || standingOnBlackBottomEdge;
+            twoDAnimator.ApplyState(currentMode, body.velocity, grounded);
         }
 
         private void ApplyBlackRegionEdgeRules(ref PetsGridCoord nextCoord, PetsGridCoord fallbackCoord)
@@ -889,27 +935,65 @@ namespace DimensionShift.PetsLike
         private bool CheckGrounded2D()
         {
             Bounds bounds = capsule.bounds;
-            float probeRadius = Mathf.Min(twoDGroundCheckRadius, Mathf.Max(0.05f, bounds.extents.x * 0.8f));
-            Vector3 probeCenter = new Vector3(bounds.center.x, bounds.min.y + probeRadius - 0.02f, bounds.center.z);
-            int hitCount = Physics.OverlapSphereNonAlloc(
+            float probeRadius = Mathf.Min(twoDGroundCheckRadius, Mathf.Max(0.04f, bounds.extents.x * 0.62f));
+            Vector3 probeCenter = new Vector3(bounds.center.x, bounds.min.y + probeRadius + 0.03f, bounds.center.z);
+            int hitCount = Physics.SphereCastNonAlloc(
                 probeCenter,
-                probeRadius + twoDGroundCheckDistance,
+                probeRadius,
+                Vector3.down,
                 groundHits,
+                twoDGroundCheckDistance + 0.06f,
                 ~0,
                 QueryTriggerInteraction.Ignore);
 
             for (int i = 0; i < hitCount; i++)
             {
-                Collider hit = groundHits[i];
+                Collider hit = groundHits[i].collider;
                 if (hit == null || hit == capsule || hit.transform.IsChildOf(transform))
                 {
                     continue;
                 }
 
-                return true;
+                if (groundHits[i].normal.y >= 0.62f)
+                {
+                    return true;
+                }
             }
 
             return false;
+        }
+
+        private void ConfigureCapsuleFriction()
+        {
+            if (capsule == null)
+            {
+                return;
+            }
+
+            if (noFrictionMaterial == null)
+            {
+                noFrictionMaterial = new PhysicMaterial("PETS Player No Friction")
+                {
+                    dynamicFriction = 0f,
+                    staticFriction = 0f,
+                    bounciness = 0f,
+                    frictionCombine = PhysicMaterialCombine.Minimum,
+                    bounceCombine = PhysicMaterialCombine.Minimum
+                };
+            }
+
+            capsule.material = noFrictionMaterial;
+        }
+
+        private void ApplyTwoDJumpGravity(ref Vector3 velocity)
+        {
+            if (isGrounded2D || standingOnBlackTopEdge || standingOnBlackBottomEdge)
+            {
+                return;
+            }
+
+            float gravityScale = velocity.y > 0f ? twoDJumpUpGravityScale : twoDJumpDownGravityScale;
+            velocity += Physics.gravity * ((gravityScale - 1f) * Time.fixedDeltaTime);
         }
 
         private static Vector2Int ResolveCardinalDirection(Vector2 input)

@@ -261,6 +261,9 @@ namespace DimensionShift.PetsLike
                 case PetsCellKind.HeadBreakBox:
                     propKind = PetsPropKind.HeadBreakBox;
                     return true;
+                case PetsCellKind.Star:
+                    propKind = PetsPropKind.Star;
+                    return true;
                 default:
                     propKind = PetsPropKind.None;
                     return false;

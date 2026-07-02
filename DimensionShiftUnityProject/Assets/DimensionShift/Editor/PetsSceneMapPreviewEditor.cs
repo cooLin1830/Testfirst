@@ -68,6 +68,7 @@ namespace DimensionShiftEditor
                 DrawBrushButton("Brick", PetsCellKind.BreakableBrick);
                 DrawBrushButton("Box", PetsCellKind.PushBox);
                 DrawBrushButton("HeadBox", PetsCellKind.HeadBreakBox);
+                DrawBrushButton("Star", PetsCellKind.Star);
             }
             finally
             {
@@ -291,6 +292,8 @@ namespace DimensionShiftEditor
                     return preview.BoxColor;
                 case PetsCellKind.HeadBreakBox:
                     return preview.HeadBreakBoxColor;
+                case PetsCellKind.Star:
+                    return preview.StarColor;
                 case PetsCellKind.BouncePad:
                     return preview.BouncePadColor;
                 default:
@@ -308,6 +311,8 @@ namespace DimensionShiftEditor
                     return preview.BoxColor;
                 case PetsPropKind.HeadBreakBox:
                     return preview.HeadBreakBoxColor;
+                case PetsPropKind.Star:
+                    return preview.StarColor;
                 default:
                     return preview.WhiteColor;
             }
@@ -331,6 +336,8 @@ namespace DimensionShiftEditor
                     return "BOX";
                 case PetsCellKind.HeadBreakBox:
                     return "HEAD";
+                case PetsCellKind.Star:
+                    return "*";
                 case PetsCellKind.BouncePad:
                     return "UP";
                 default:
@@ -348,6 +355,8 @@ namespace DimensionShiftEditor
                     return "BOX";
                 case PetsPropKind.HeadBreakBox:
                     return "HEAD";
+                case PetsPropKind.Star:
+                    return "*";
                 default:
                     return string.Empty;
             }
@@ -394,6 +403,9 @@ namespace DimensionShiftEditor
                     return true;
                 case PetsCellKind.HeadBreakBox:
                     prop = PetsPropKind.HeadBreakBox;
+                    return true;
+                case PetsCellKind.Star:
+                    prop = PetsPropKind.Star;
                     return true;
                 default:
                     prop = PetsPropKind.None;

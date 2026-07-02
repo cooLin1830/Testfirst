@@ -41,10 +41,16 @@ namespace DimensionShift.PetsLike
             }
 
             GUI.DrawTexture(new Rect(18, 18, 520, 150), panelTexture);
+            string starText = player != null && player.TotalStars > 0
+                ? $"\nStars: <b>{player.CollectedStars}/{player.TotalStars}</b>"
+                : string.Empty;
             string winText = player != null && player.ReachedExit ? "\n<b>Exit reached. Prototype complete.</b>" : string.Empty;
+            string exitHint = player != null && !player.ReachedExit && player.TotalStars > 0 && player.CollectedStars < player.TotalStars
+                ? "\nCollect every star before using EXIT."
+                : string.Empty;
             GUI.Label(
                 new Rect(18, 18, 520, 150),
-                $"<b>PETS-like Mechanic Prototype</b>\nMode: <b>{ModeName()}</b>\nA/D: move in 2D    WASD: move in 2.5D\nSpace: jump    E: use 2D/2.5D switch tile    R: respawn\nBlack is safe in 2D but becomes a hole in 2.5D.{winText}",
+                $"<b>PETS-like Mechanic Prototype</b>\nMode: <b>{ModeName()}</b>{starText}\nA/D: move in 2D    WASD: move in 2.5D\nSpace: jump    E: use 2D/2.5D switch tile    R: respawn\nBlack is safe in 2D but becomes a hole in 2.5D.{exitHint}{winText}",
                 labelStyle);
         }
 

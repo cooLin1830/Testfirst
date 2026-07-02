@@ -1,10 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 namespace DimensionShift.PetsLike
 {
     public sealed class PetsLevelRuntime : PetsPerspectiveListenerBehaviour
     {
+        private const string StarFbxPath = "Assets/Art/3D/star.fbx";
+        private const string TwoDBrickSpritePath = "Assets/Art/3D/brick.png";
+        private const string TwoDBoxSpritePath = "Assets/Art/3D/box.png";
+        private const string TopDownBrickFbxPath = "Assets/Art/3D/brick.fbx";
+        private const string TopDownBoxFbxPath = "Assets/Art/3D/boxfbx.fbx";
+
         [SerializeField] private float cellSize = 1f;
         [SerializeField] private float twoDLineThickness = 0.18f;
         [SerializeField] private float twoDLineDepth = 0.8f;
@@ -16,6 +26,7 @@ namespace DimensionShift.PetsLike
         [SerializeField] private float bouncePadVelocity = 10.5f;
         [SerializeField] private Vector3 flattenedShadowOffset = new Vector3(0.08f, -0.045f, -0.12f);
         [SerializeField] private Color flattenedShadowColor = new Color(0.72f, 0.72f, 0.68f, 1f);
+        [SerializeField] private Color starColor = new Color(1f, 0.86f, 0.18f);
 
         private readonly Dictionary<Vector2Int, PetsCellKind> twoDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsCellKind> twoPointFiveDCells = new Dictionary<Vector2Int, PetsCellKind>();
@@ -33,10 +44,16 @@ namespace DimensionShift.PetsLike
         private Transform topDownRoot;
         private Transform sharedRoot;
         private Material flattenedShadowMaterial;
+        private Material starMaterial;
         private PetsPerspectiveMode currentMode;
+        private int totalStars;
+        private int collectedStars;
 
         public PetsLevelDefinition Definition { get; private set; }
         public float CellSize => cellSize;
+        public int TotalStars => totalStars;
+        public int CollectedStars => collectedStars;
+        public bool HasCollectedAllStars => collectedStars >= totalStars;
 
         public void Build(PetsLevelDefinition definition, Material whiteMaterial, Material blackMaterial, Material switchMaterial, Material exitMaterial, Material brickMaterial, Material boxMaterial, Material bouncePadMaterial)
         {
@@ -53,6 +70,8 @@ namespace DimensionShift.PetsLike
             twoDObjects.Clear();
             topDownObjects.Clear();
             sharedObjects.Clear();
+            totalStars = 0;
+            collectedStars = 0;
 
             twoDRoot = CreateRoot("2D Mode Objects");
             topDownRoot = CreateRoot("2.5D Mode Objects");
@@ -255,6 +274,21 @@ namespace DimensionShift.PetsLike
         public bool IsExit(PetsGridCoord coord)
         {
             return GetMarker(coord) == PetsCellKind.Exit;
+        }
+
+        public bool CanReachExit(PetsGridCoord coord)
+        {
+            return IsExit(coord) && HasCollectedAllStars;
+        }
+
+        public void NotifyStarCollected(PetsGridCoord coord)
+        {
+            if (!propCells.TryGetValue(coord.ToVector2Int(), out PetsPropKind kind) || kind != PetsPropKind.Star)
+            {
+                return;
+            }
+
+            collectedStars = Mathf.Clamp(collectedStars + 1, 0, totalStars);
         }
 
         public bool IsBreakableBrick(PetsGridCoord coord, PetsPerspectiveMode mode)
@@ -605,34 +639,37 @@ namespace DimensionShift.PetsLike
                 case PetsPropKind.PushBox:
                     BuildPushBox(coord, boxMaterial);
                     break;
+                case PetsPropKind.Star:
+                    BuildStar(coord);
+                    break;
             }
         }
 
         private void BuildBreakableBrick(Vector2Int coord, Material material, PetsBreakablePropRule breakRule)
         {
             string displayName = breakRule == PetsBreakablePropRule.TwoDHeadHit ? "Head Break Box" : "Breakable Brick";
+            string twoDSpritePath = breakRule == PetsBreakablePropRule.TwoDHeadHit ? TwoDBoxSpritePath : TwoDBrickSpritePath;
             GameObject root = new GameObject($"{displayName} {coord.x},{coord.y}");
             root.transform.SetParent(transform);
             root.transform.position = Vector3.zero;
 
-            GameObject twoDView = CreateBox(
+            GameObject twoDView = CreateTwoDPropSpriteView(
                 $"2D {displayName}",
                 root.transform,
                 new Vector3(coord.x * cellSize, coord.y * cellSize, -0.36f),
-                new Vector3(cellSize * 0.88f, cellSize * 0.88f, 0.18f),
-                material,
-                true,
-                true);
+                new Vector2(cellSize * 0.88f, cellSize * 0.88f),
+                twoDSpritePath,
+                material);
             AlignTwoDPropColliderToPhysicsPlane(twoDView);
 
-            GameObject topDownView = CreateBox(
+            string topDownModelPath = breakRule == PetsBreakablePropRule.TwoDHeadHit ? TopDownBoxFbxPath : TopDownBrickFbxPath;
+            GameObject topDownView = CreateTopDownPropModelView(
                 $"2.5D {displayName}",
                 root.transform,
                 new Vector3(coord.x * cellSize, 0.38f, coord.y * cellSize),
                 new Vector3(cellSize * 0.82f, 0.76f, cellSize * 0.82f),
-                material,
-                true,
-                true);
+                topDownModelPath,
+                material);
 
             PetsBreakableBrick brick = root.AddComponent<PetsBreakableBrick>();
             brick.Configure(this, PetsGridCoord.FromVector2Int(coord), twoDView, topDownView, breakRule);
@@ -645,24 +682,22 @@ namespace DimensionShift.PetsLike
             root.transform.SetParent(transform);
             root.transform.position = Vector3.zero;
 
-            GameObject twoDView = CreateBox(
+            GameObject twoDView = CreateTwoDPropSpriteView(
                 "2D Box",
                 root.transform,
                 new Vector3(coord.x * cellSize, coord.y * cellSize, -0.34f),
-                new Vector3(cellSize * 0.78f, cellSize * 0.78f, 0.2f),
-                material,
-                true,
-                true);
+                new Vector2(cellSize * 0.78f, cellSize * 0.78f),
+                TwoDBoxSpritePath,
+                material);
             AlignTwoDPropColliderToPhysicsPlane(twoDView);
 
-            GameObject topDownView = CreateBox(
+            GameObject topDownView = CreateTopDownPropModelView(
                 "2.5D Box",
                 root.transform,
                 new Vector3(coord.x * cellSize, 0.42f, coord.y * cellSize),
                 new Vector3(cellSize * 0.78f, 0.84f, cellSize * 0.78f),
-                material,
-                true,
-                true);
+                TopDownBoxFbxPath,
+                material);
             Rigidbody body = topDownView.AddComponent<Rigidbody>();
             body.mass = 2.4f;
             body.drag = 7f;
@@ -704,6 +739,126 @@ namespace DimensionShift.PetsLike
             twoDObjects.Add(root);
         }
 
+        private void BuildStar(Vector2Int coord)
+        {
+            totalStars++;
+
+            GameObject root = new GameObject($"Star Collectible {coord.x},{coord.y}");
+            root.transform.SetParent(transform);
+            root.transform.position = Vector3.zero;
+
+            Material material = GetStarMaterial();
+            GameObject twoDView = CreateStarView(
+                "2D Star",
+                root.transform,
+                new Vector3(coord.x * cellSize, coord.y * cellSize + cellSize * 0.14f, -0.34f),
+                Quaternion.identity,
+                Vector3.one * (cellSize * 0.34f),
+                material);
+
+            GameObject topDownView = CreateStarView(
+                "2.5D Star",
+                root.transform,
+                new Vector3(coord.x * cellSize, 0.58f, coord.y * cellSize),
+                Quaternion.Euler(0f, 20f, 0f),
+                Vector3.one * (cellSize * 0.32f),
+                material);
+
+            GameObject triggerObject = new GameObject("Star Trigger");
+            triggerObject.transform.SetParent(root.transform);
+            triggerObject.transform.position = new Vector3(coord.x * cellSize, coord.y * cellSize, 0f);
+            BoxCollider trigger = triggerObject.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+
+            PetsStarCollectible star = triggerObject.AddComponent<PetsStarCollectible>();
+            star.Configure(this, PetsGridCoord.FromVector2Int(coord), twoDView, topDownView);
+            sharedObjects.Add(root);
+        }
+
+        private GameObject CreateStarView(string name, Transform parent, Vector3 position, Quaternion rotation, Vector3 scale, Material material)
+        {
+#if UNITY_EDITOR
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(StarFbxPath);
+            if (prefab != null)
+            {
+                GameObject instance = Object.Instantiate(prefab, parent);
+                instance.name = name;
+                instance.transform.position = position;
+                instance.transform.rotation = rotation;
+                instance.transform.localScale = scale;
+                RemoveGeneratedColliders(instance);
+                return instance;
+            }
+#endif
+
+            GameObject fallback = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            fallback.name = name;
+            fallback.transform.SetParent(parent);
+            fallback.transform.position = position;
+            fallback.transform.rotation = rotation;
+            fallback.transform.localScale = scale;
+            Renderer renderer = fallback.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.sharedMaterial = material;
+            }
+
+            RemoveGeneratedCollider(fallback.GetComponent<Collider>());
+            return fallback;
+        }
+
+        private Material GetStarMaterial()
+        {
+            if (starMaterial != null)
+            {
+                return starMaterial;
+            }
+
+            Shader shader = Shader.Find("Standard");
+            if (shader == null)
+            {
+                shader = Shader.Find("Unlit/Color");
+            }
+
+            starMaterial = new Material(shader)
+            {
+                name = "Star Collectible"
+            };
+            starMaterial.color = starColor;
+            if (shader.name == "Standard")
+            {
+                starMaterial.SetFloat("_Glossiness", 0.2f);
+            }
+
+            return starMaterial;
+        }
+
+        private static void RemoveGeneratedColliders(GameObject root)
+        {
+            Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                RemoveGeneratedCollider(colliders[i]);
+            }
+        }
+
+        private static void RemoveGeneratedCollider(Collider collider)
+        {
+            if (collider == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(collider);
+            }
+            else
+            {
+                DestroyImmediate(collider);
+            }
+        }
+
         private void AlignTwoDPropColliderToPhysicsPlane(GameObject prop)
         {
             if (prop == null)
@@ -725,6 +880,119 @@ namespace DimensionShift.PetsLike
             Vector3 size = collider.size;
             size.z = twoDLineDepth / Mathf.Max(0.001f, Mathf.Abs(prop.transform.lossyScale.z));
             collider.size = size;
+        }
+
+        private GameObject CreateTwoDPropSpriteView(string name, Transform parent, Vector3 position, Vector2 size, string spritePath, Material fallbackMaterial)
+        {
+#if UNITY_EDITOR
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+            if (sprite != null)
+            {
+                GameObject view = new GameObject(name);
+                view.transform.SetParent(parent);
+                view.transform.position = position;
+
+                SpriteRenderer spriteRenderer = view.AddComponent<SpriteRenderer>();
+                spriteRenderer.sprite = sprite;
+                spriteRenderer.sortingOrder = 20;
+
+                Vector2 spriteWorldSize = sprite.bounds.size;
+                view.transform.localScale = new Vector3(
+                    size.x / Mathf.Max(0.001f, spriteWorldSize.x),
+                    size.y / Mathf.Max(0.001f, spriteWorldSize.y),
+                    1f);
+
+                BoxCollider collider = view.AddComponent<BoxCollider>();
+                collider.size = new Vector3(spriteWorldSize.x, spriteWorldSize.y, twoDLineDepth);
+                return view;
+            }
+#endif
+
+            return CreateBox(
+                name,
+                parent,
+                position,
+                new Vector3(size.x, size.y, 0.18f),
+                fallbackMaterial,
+                true,
+                true);
+        }
+
+        private GameObject CreateTopDownPropModelView(string name, Transform parent, Vector3 position, Vector3 colliderScale, string modelPath, Material fallbackMaterial)
+        {
+            GameObject view = CreateBox(
+                name,
+                parent,
+                position,
+                colliderScale,
+                fallbackMaterial,
+                true,
+                false);
+
+#if UNITY_EDITOR
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
+            if (prefab != null)
+            {
+                GameObject model = Object.Instantiate(prefab, view.transform);
+                model.name = $"{name} Model";
+                model.transform.localPosition = Vector3.zero;
+                model.transform.localRotation = Quaternion.identity;
+                model.transform.localScale = Vector3.one;
+                RemoveGeneratedColliders(model);
+                FitVisualToCollider(model.transform, colliderScale);
+                return view;
+            }
+#endif
+
+            Renderer renderer = view.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.enabled = true;
+            }
+
+            return view;
+        }
+
+        private static void FitVisualToCollider(Transform visualRoot, Vector3 targetSize)
+        {
+            if (visualRoot == null)
+            {
+                return;
+            }
+
+            Bounds bounds = CalculateRendererBounds(visualRoot);
+            Vector3 size = bounds.size;
+            if (size.x <= 0.001f || size.y <= 0.001f || size.z <= 0.001f)
+            {
+                return;
+            }
+
+            float scale = Mathf.Min(
+                targetSize.x / size.x,
+                targetSize.y / size.y,
+                targetSize.z / size.z);
+            visualRoot.localScale = Vector3.one * scale;
+
+            Bounds scaledBounds = CalculateRendererBounds(visualRoot);
+            Vector3 offset = visualRoot.position - scaledBounds.center;
+            visualRoot.position += offset;
+        }
+
+        private static Bounds CalculateRendererBounds(Transform root)
+        {
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0)
+            {
+                return new Bounds(root.position, Vector3.one);
+            }
+
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+            {
+                bounds.Encapsulate(renderers[i].bounds);
+            }
+
+            return bounds;
         }
 
         private void BuildBlackRegionFills(Dictionary<Vector2Int, PetsCellKind> source, PetsPerspectiveMode mode, Material material)

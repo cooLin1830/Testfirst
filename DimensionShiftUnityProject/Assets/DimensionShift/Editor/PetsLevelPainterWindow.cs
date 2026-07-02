@@ -19,6 +19,7 @@ namespace DimensionShiftEditor
         private static readonly Color BoxColor = new Color(0.72f, 0.48f, 0.22f);
         private static readonly Color HeadBreakBoxColor = new Color(0.62f, 0.34f, 0.82f);
         private static readonly Color BouncePadColor = new Color(1f, 0.82f, 0.16f);
+        private static readonly Color StarColor = new Color(1f, 0.86f, 0.18f);
         private static readonly Color SpawnColor = new Color(0.28f, 0.36f, 1f, 0.9f);
 
         private PetsEditableLevelAsset levelAsset;
@@ -137,6 +138,7 @@ namespace DimensionShiftEditor
                 DrawBrushButton("Brick", PetsCellKind.BreakableBrick);
                 DrawBrushButton("Box", PetsCellKind.PushBox);
                 DrawBrushButton("HeadBox", PetsCellKind.HeadBreakBox);
+                DrawBrushButton("Star", PetsCellKind.Star);
                 DrawBrushButton("Bounce", PetsCellKind.BouncePad);
                 DrawBrushButton("Erase", PetsCellKind.Empty);
                 if (GUILayout.Button("Spawn", GUILayout.Width(70f)))
@@ -459,6 +461,8 @@ namespace DimensionShiftEditor
                     return BoxColor;
                 case PetsCellKind.HeadBreakBox:
                     return HeadBreakBoxColor;
+                case PetsCellKind.Star:
+                    return StarColor;
                 case PetsCellKind.BouncePad:
                     return BouncePadColor;
                 default:
@@ -476,6 +480,8 @@ namespace DimensionShiftEditor
                     return BoxColor;
                 case PetsPropKind.HeadBreakBox:
                     return HeadBreakBoxColor;
+                case PetsPropKind.Star:
+                    return StarColor;
                 default:
                     return WhiteCellColor;
             }
@@ -499,6 +505,8 @@ namespace DimensionShiftEditor
                     return "BOX";
                 case PetsCellKind.HeadBreakBox:
                     return "HEAD";
+                case PetsCellKind.Star:
+                    return "*";
                 case PetsCellKind.BouncePad:
                     return "UP";
                 default:
@@ -516,6 +524,8 @@ namespace DimensionShiftEditor
                     return "BOX";
                 case PetsPropKind.HeadBreakBox:
                     return "HEAD";
+                case PetsPropKind.Star:
+                    return "*";
                 default:
                     return string.Empty;
             }
@@ -562,6 +572,9 @@ namespace DimensionShiftEditor
                     return true;
                 case PetsCellKind.HeadBreakBox:
                     prop = PetsPropKind.HeadBreakBox;
+                    return true;
+                case PetsCellKind.Star:
+                    prop = PetsPropKind.Star;
                     return true;
                 default:
                     prop = PetsPropKind.None;

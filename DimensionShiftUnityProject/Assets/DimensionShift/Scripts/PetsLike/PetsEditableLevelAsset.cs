@@ -403,7 +403,8 @@ namespace DimensionShift.PetsLike
         {
             return kind == PetsCellKind.BreakableBrick
                 || kind == PetsCellKind.PushBox
-                || kind == PetsCellKind.HeadBreakBox;
+                || kind == PetsCellKind.HeadBreakBox
+                || kind == PetsCellKind.Star;
         }
 
         private static bool IsMarkerKind(PetsCellKind kind)
@@ -425,6 +426,9 @@ namespace DimensionShift.PetsLike
                     return true;
                 case PetsCellKind.HeadBreakBox:
                     propKind = PetsPropKind.HeadBreakBox;
+                    return true;
+                case PetsCellKind.Star:
+                    propKind = PetsPropKind.Star;
                     return true;
                 default:
                     propKind = PetsPropKind.None;
