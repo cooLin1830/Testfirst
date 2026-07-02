@@ -17,7 +17,7 @@ MonoBehaviour:
   cellSize: 1.15
   spawn:
     x: 10
-    y: 33
+    y: 32
   cells:
   - x: 9
     y: 31
@@ -1284,28 +1284,13 @@ MonoBehaviour:
     kind: 2
   - x: 43
     y: 15
-    kind: 2
+    kind: 4
   - x: 43
     y: 16
-    kind: 2
-  - x: 43
-    y: 17
     kind: 2
   - x: 42
     y: 18
     kind: 2
-  - x: 42
-    y: 19
-    kind: 7
-  - x: 42
-    y: 20
-    kind: 7
-  - x: 42
-    y: 21
-    kind: 7
-  - x: 43
-    y: 21
-    kind: 7
   - x: 43
     y: 22
     kind: 2
@@ -1334,19 +1319,7 @@ MonoBehaviour:
     y: 22
     kind: 2
   - x: 41
-    y: 21
-    kind: 7
-  - x: 41
-    y: 20
-    kind: 7
-  - x: 41
-    y: 19
-    kind: 7
-  - x: 41
     y: 18
-    kind: 2
-  - x: 41
-    y: 17
     kind: 2
   - x: 41
     y: 16
@@ -1385,20 +1358,8 @@ MonoBehaviour:
     y: 23
     kind: 2
   - x: 42
-    y: 17
-    kind: 2
-  - x: 42
     y: 16
     kind: 2
-  - x: 43
-    y: 19
-    kind: 7
-  - x: 43
-    y: 20
-    kind: 7
-  - x: 43
-    y: 18
-    kind: 4
   - x: 42
     y: 15
     kind: 2
@@ -1645,3 +1606,52 @@ MonoBehaviour:
   - x: 12
     y: 23
     kind: 2
+  - x: 41
+    y: 21
+    kind: 2
+  - x: 41
+    y: 20
+    kind: 2
+  - x: 41
+    y: 19
+    kind: 2
+  - x: 43
+    y: 18
+    kind: 2
+  - x: 43
+    y: 19
+    kind: 2
+  - x: 43
+    y: 20
+    kind: 2
+  - x: 43
+    y: 21
+    kind: 2
+  - x: 42
+    y: 21
+    kind: 2
+  - x: 42
+    y: 20
+    kind: 2
+  - x: 42
+    y: 19
+    kind: 2
+  - x: 41
+    y: 17
+    kind: 2
+  - x: 42
+    y: 17
+    kind: 2
+  - x: 43
+    y: 17
+    kind: 2
+  props:
+  - x: 41
+    y: 16
+    kind: 1
+  - x: 42
+    y: 16
+    kind: 1
+  - x: 43
+    y: 16
+    kind: 1
