@@ -8,6 +8,7 @@ namespace DimensionShift.PetsLike
         private readonly Dictionary<Vector2Int, PetsCellKind> twoDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsCellKind> twoPointFiveDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsPropKind> props = new Dictionary<Vector2Int, PetsPropKind>();
+        private readonly Dictionary<Vector2Int, PetsCellKind> markers = new Dictionary<Vector2Int, PetsCellKind>();
         private bool hasTwoPointFiveDOverride;
 
         public int Width { get; }
@@ -19,6 +20,7 @@ namespace DimensionShift.PetsLike
         public IEnumerable<KeyValuePair<Vector2Int, PetsCellKind>> TwoDCells => twoDCells;
         public IEnumerable<KeyValuePair<Vector2Int, PetsCellKind>> TwoPointFiveDCells => hasTwoPointFiveDOverride ? twoPointFiveDCells : twoDCells;
         public IEnumerable<KeyValuePair<Vector2Int, PetsPropKind>> Props => props;
+        public IEnumerable<KeyValuePair<Vector2Int, PetsCellKind>> Markers => markers;
 
         public PetsLevelDefinition(int width, int height, float cellSize)
         {
@@ -30,6 +32,12 @@ namespace DimensionShift.PetsLike
 
         public void SetCell(int x, int y, PetsCellKind kind)
         {
+            if (IsMarkerKind(kind))
+            {
+                SetMarker(x, y, kind);
+                return;
+            }
+
             if (TryConvertLegacyPropCell(kind, out PetsPropKind propKind))
             {
                 SetProp(x, y, propKind);
@@ -51,11 +59,18 @@ namespace DimensionShift.PetsLike
             if (kind == PetsCellKind.Empty)
             {
                 SetProp(x, y, PetsPropKind.None);
+                SetMarker(x, y, PetsCellKind.Empty);
             }
         }
 
         public void SetCell(int x, int y, PetsCellKind kind, PetsPerspectiveMode mode)
         {
+            if (IsMarkerKind(kind))
+            {
+                SetMarker(x, y, kind);
+                return;
+            }
+
             if (TryConvertLegacyPropCell(kind, out PetsPropKind propKind))
             {
                 SetProp(x, y, propKind);
@@ -80,10 +95,32 @@ namespace DimensionShift.PetsLike
             {
                 EnsureTwoPointFiveDOverride();
                 SetCellRaw(twoPointFiveDCells, x, y, kind);
+                if (kind == PetsCellKind.Empty)
+                {
+                    SetMarker(x, y, PetsCellKind.Empty);
+                }
+
                 return;
             }
 
             SetCell(x, y, kind);
+        }
+
+        public void SetMarker(int x, int y, PetsCellKind kind)
+        {
+            Vector2Int coord = new Vector2Int(x, y);
+            if (kind == PetsCellKind.Empty)
+            {
+                markers.Remove(coord);
+                return;
+            }
+
+            if (!IsMarkerKind(kind))
+            {
+                return;
+            }
+
+            markers[coord] = kind;
         }
 
         public void SetProp(int x, int y, PetsPropKind kind)
@@ -175,6 +212,16 @@ namespace DimensionShift.PetsLike
             return props.TryGetValue(new Vector2Int(x, y), out PetsPropKind kind) ? kind : PetsPropKind.None;
         }
 
+        public PetsCellKind GetMarker(PetsGridCoord coord)
+        {
+            return GetMarker(coord.x, coord.y);
+        }
+
+        public PetsCellKind GetMarker(int x, int y)
+        {
+            return markers.TryGetValue(new Vector2Int(x, y), out PetsCellKind kind) ? kind : PetsCellKind.Empty;
+        }
+
         public bool Contains(PetsGridCoord coord)
         {
             return coord.x >= 0 && coord.y >= 0 && coord.x < Width && coord.y < Height;
@@ -218,6 +265,13 @@ namespace DimensionShift.PetsLike
                     propKind = PetsPropKind.None;
                     return false;
             }
+        }
+
+        private static bool IsMarkerKind(PetsCellKind kind)
+        {
+            return kind == PetsCellKind.SwitchTo2D
+                || kind == PetsCellKind.SwitchToTwoPointFiveD
+                || kind == PetsCellKind.Exit;
         }
 
         private void EnsureTwoPointFiveDOverride()

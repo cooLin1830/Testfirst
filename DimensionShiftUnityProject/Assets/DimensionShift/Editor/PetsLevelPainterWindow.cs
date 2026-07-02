@@ -183,8 +183,9 @@ namespace DimensionShiftEditor
                     {
                         Rect cellRect = CellRect(canvas, x, y);
                         PetsCellKind kind = levelAsset.GetCell(x, y);
+                        PetsCellKind marker = levelAsset.GetMarker(x, y);
                         PetsPropKind prop = levelAsset.GetProp(x, y);
-                        DrawCell(cellRect, kind, prop);
+                        DrawCell(cellRect, kind, marker, prop);
                         Handles.color = GridColor;
                         Handles.DrawAAPolyLine(1f,
                             new Vector3(cellRect.xMin, cellRect.yMin),
@@ -210,34 +211,46 @@ namespace DimensionShiftEditor
             return new Rect(canvas.x + x * CellPixels, canvas.y + drawY * CellPixels, CellPixels, CellPixels);
         }
 
-        private void DrawCell(Rect rect, PetsCellKind kind, PetsPropKind prop)
+        private void DrawCell(Rect rect, PetsCellKind kind, PetsCellKind marker, PetsPropKind prop)
         {
-            if (kind == PetsCellKind.Empty && prop == PetsPropKind.None)
+            if (kind == PetsCellKind.Empty && marker == PetsCellKind.Empty && prop == PetsPropKind.None)
             {
                 return;
             }
 
             Rect fillRect = new Rect(rect.x + 1f, rect.y + 1f, rect.width - 2f, rect.height - 2f);
             Rect labelRect = rect;
-            if (prop != PetsPropKind.None)
-            {
-                EditorGUI.DrawRect(fillRect, kind == PetsCellKind.Empty ? WhiteCellColor : ColorFor(kind));
-                Rect propRect = new Rect(rect.x + rect.width * 0.22f, rect.y + rect.height * 0.22f, rect.width * 0.56f, rect.height * 0.56f);
-                EditorGUI.DrawRect(propRect, ColorFor(prop));
-                labelRect = propRect;
-            }
-            else
+            if (kind != PetsCellKind.Empty)
             {
                 EditorGUI.DrawRect(fillRect, ColorFor(kind));
             }
 
-            string label = prop != PetsPropKind.None ? LabelFor(prop) : LabelFor(kind);
+            if (marker != PetsCellKind.Empty)
+            {
+                Rect markerRect = new Rect(rect.x + rect.width * 0.12f, rect.y + rect.height * 0.12f, rect.width * 0.76f, rect.height * 0.76f);
+                EditorGUI.DrawRect(markerRect, ColorFor(marker));
+                labelRect = markerRect;
+            }
+
+            if (prop != PetsPropKind.None)
+            {
+                if (kind == PetsCellKind.Empty && marker == PetsCellKind.Empty)
+                {
+                    EditorGUI.DrawRect(fillRect, WhiteCellColor);
+                }
+
+                Rect propRect = new Rect(rect.x + rect.width * 0.22f, rect.y + rect.height * 0.22f, rect.width * 0.56f, rect.height * 0.56f);
+                EditorGUI.DrawRect(propRect, ColorFor(prop));
+                labelRect = propRect;
+            }
+
+            string label = prop != PetsPropKind.None ? LabelFor(prop) : marker != PetsCellKind.Empty ? LabelFor(marker) : LabelFor(kind);
             if (!string.IsNullOrEmpty(label))
             {
                 GUIStyle style = new GUIStyle(EditorStyles.boldLabel)
                 {
                     alignment = TextAnchor.MiddleCenter,
-                    normal = { textColor = kind == PetsCellKind.BlackRegion ? Color.white : Color.black },
+                    normal = { textColor = kind == PetsCellKind.BlackRegion && marker == PetsCellKind.Empty ? Color.white : Color.black },
                     fontSize = prop == PetsPropKind.PushBox || prop == PetsPropKind.HeadBreakBox ? 8 : 10
                 };
                 GUI.Label(labelRect, label, style);
@@ -528,6 +541,12 @@ namespace DimensionShiftEditor
                 return;
             }
 
+            if (IsMarkerBrush(brush))
+            {
+                levelAsset.SetMarker(x, y, brush);
+                return;
+            }
+
             levelAsset.SetCell(x, y, brush);
         }
 
@@ -548,6 +567,13 @@ namespace DimensionShiftEditor
                     prop = PetsPropKind.None;
                     return false;
             }
+        }
+
+        private static bool IsMarkerBrush(PetsCellKind brushKind)
+        {
+            return brushKind == PetsCellKind.SwitchTo2D
+                || brushKind == PetsCellKind.SwitchToTwoPointFiveD
+                || brushKind == PetsCellKind.Exit;
         }
     }
 }

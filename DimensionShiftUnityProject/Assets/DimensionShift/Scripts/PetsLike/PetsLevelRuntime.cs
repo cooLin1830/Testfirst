@@ -20,6 +20,7 @@ namespace DimensionShift.PetsLike
         private readonly Dictionary<Vector2Int, PetsCellKind> twoDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsCellKind> twoPointFiveDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsPropKind> propCells = new Dictionary<Vector2Int, PetsPropKind>();
+        private readonly Dictionary<Vector2Int, PetsCellKind> markerCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsSwitchTile> switchTiles = new Dictionary<Vector2Int, PetsSwitchTile>();
         private readonly Dictionary<Vector2Int, GameObject> topDownPlatforms = new Dictionary<Vector2Int, GameObject>();
         private readonly Dictionary<Vector2Int, PetsBreakableBrick> breakableBricks = new Dictionary<Vector2Int, PetsBreakableBrick>();
@@ -44,6 +45,7 @@ namespace DimensionShift.PetsLike
             twoDCells.Clear();
             twoPointFiveDCells.Clear();
             propCells.Clear();
+            markerCells.Clear();
             switchTiles.Clear();
             topDownPlatforms.Clear();
             breakableBricks.Clear();
@@ -71,7 +73,10 @@ namespace DimensionShift.PetsLike
                 propCells[prop.Key] = prop.Value;
             }
 
-            HashSet<Vector2Int> markerCoords = new HashSet<Vector2Int>();
+            foreach (KeyValuePair<Vector2Int, PetsCellKind> marker in definition.Markers)
+            {
+                markerCells[marker.Key] = marker.Value;
+            }
 
             foreach (KeyValuePair<Vector2Int, PetsCellKind> cell in twoDCells)
             {
@@ -93,30 +98,13 @@ namespace DimensionShift.PetsLike
             BuildMergedTwoDShapeInk(blackMaterial);
             BuildMergedTopDownShapeInk(blackMaterial);
 
-            foreach (KeyValuePair<Vector2Int, PetsCellKind> cell in twoDCells)
+            foreach (KeyValuePair<Vector2Int, PetsCellKind> markerCell in markerCells)
             {
-                if (IsMarkerKind(cell.Value))
+                if (IsMarkerKind(markerCell.Value))
                 {
-                    GameObject marker = CreateMarker(cell.Key, cell.Value, switchMaterial, exitMaterial);
+                    GameObject marker = CreateMarker(markerCell.Key, markerCell.Value, switchMaterial, exitMaterial);
                     marker.transform.SetParent(sharedRoot);
                     sharedObjects.Add(marker);
-                    markerCoords.Add(cell.Key);
-                }
-            }
-
-            foreach (KeyValuePair<Vector2Int, PetsCellKind> cell in twoPointFiveDCells)
-            {
-                if (markerCoords.Contains(cell.Key))
-                {
-                    continue;
-                }
-
-                if (IsMarkerKind(cell.Value))
-                {
-                    GameObject marker = CreateMarker(cell.Key, cell.Value, switchMaterial, exitMaterial);
-                    marker.transform.SetParent(sharedRoot);
-                    sharedObjects.Add(marker);
-                    markerCoords.Add(cell.Key);
                 }
             }
 
@@ -163,7 +151,7 @@ namespace DimensionShift.PetsLike
 
         public bool CanSwitchAt(PetsGridCoord coord, PetsPerspectiveMode targetMode)
         {
-            PetsCellKind kind = GetCell(coord, currentMode);
+            PetsCellKind kind = GetMarker(coord);
             return (targetMode == PetsPerspectiveMode.TwoPointFiveD && kind == PetsCellKind.SwitchToTwoPointFiveD)
                 || (targetMode == PetsPerspectiveMode.TwoD && kind == PetsCellKind.SwitchTo2D);
         }
@@ -186,18 +174,17 @@ namespace DimensionShift.PetsLike
                 return kind == PetsCellKind.WhiteInterior
                     || kind == PetsCellKind.WhiteLine
                     || kind == PetsCellKind.BlackRegion
-                    || kind == PetsCellKind.SwitchTo2D
-                    || kind == PetsCellKind.SwitchToTwoPointFiveD
-                    || kind == PetsCellKind.Exit
                     || kind == PetsCellKind.BouncePad;
             }
 
             return kind == PetsCellKind.WhiteInterior
                 || kind == PetsCellKind.WhiteLine
-                || kind == PetsCellKind.SwitchTo2D
-                || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit
                 || kind == PetsCellKind.BouncePad;
+        }
+
+        public PetsCellKind GetMarker(PetsGridCoord coord)
+        {
+            return markerCells.TryGetValue(coord.ToVector2Int(), out PetsCellKind kind) ? kind : PetsCellKind.Empty;
         }
 
         public bool IsBlackRegion(PetsGridCoord coord)
@@ -267,7 +254,7 @@ namespace DimensionShift.PetsLike
 
         public bool IsExit(PetsGridCoord coord)
         {
-            return GetCell(coord, currentMode) == PetsCellKind.Exit;
+            return GetMarker(coord) == PetsCellKind.Exit;
         }
 
         public bool IsBreakableBrick(PetsGridCoord coord, PetsPerspectiveMode mode)
@@ -386,9 +373,6 @@ namespace DimensionShift.PetsLike
             PetsCellKind kind = GetCell(coord, PetsPerspectiveMode.TwoD);
             return kind == PetsCellKind.WhiteInterior
                 || kind == PetsCellKind.WhiteLine
-                || kind == PetsCellKind.SwitchTo2D
-                || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit
                 || kind == PetsCellKind.BouncePad;
         }
 
@@ -448,9 +432,6 @@ namespace DimensionShift.PetsLike
             PetsCellKind kind = GetCell(coord, PetsPerspectiveMode.TwoD);
             return kind == PetsCellKind.WhiteInterior
                 || kind == PetsCellKind.WhiteLine
-                || kind == PetsCellKind.SwitchTo2D
-                || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit
                 || kind == PetsCellKind.BouncePad;
         }
 
@@ -909,7 +890,7 @@ namespace DimensionShift.PetsLike
                     continue;
                 }
 
-                bool isActiveInCurrentMap = IsMarkerActive(tile, GetCell(tile.Coord, currentMode), currentMode);
+                bool isActiveInCurrentMap = IsMarkerActive(tile, GetMarker(tile.Coord), currentMode);
                 SetMarkerVisible(sharedObject, isActiveInCurrentMap);
                 if (!isActiveInCurrentMap)
                 {
@@ -1276,9 +1257,6 @@ namespace DimensionShift.PetsLike
             return kind == PetsCellKind.WhiteInterior
                 || kind == PetsCellKind.WhiteLine
                 || kind == PetsCellKind.BlackRegion
-                || kind == PetsCellKind.SwitchTo2D
-                || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit
                 || kind == PetsCellKind.BouncePad;
         }
 
@@ -1287,9 +1265,6 @@ namespace DimensionShift.PetsLike
             return kind == PetsCellKind.WhiteInterior
                 || kind == PetsCellKind.WhiteLine
                 || kind == PetsCellKind.BlackRegion
-                || kind == PetsCellKind.SwitchTo2D
-                || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit
                 || kind == PetsCellKind.BouncePad;
         }
 
@@ -1297,9 +1272,6 @@ namespace DimensionShift.PetsLike
         {
             return kind == PetsCellKind.WhiteInterior
                 || kind == PetsCellKind.WhiteLine
-                || kind == PetsCellKind.SwitchTo2D
-                || kind == PetsCellKind.SwitchToTwoPointFiveD
-                || kind == PetsCellKind.Exit
                 || kind == PetsCellKind.BouncePad;
         }
 
