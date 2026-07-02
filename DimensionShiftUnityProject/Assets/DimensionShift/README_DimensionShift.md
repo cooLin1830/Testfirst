@@ -49,7 +49,7 @@ This gives stable collision callbacks and makes dimension-aware props much easie
 - Connected black regions and 2.5D holes use merged outer ink outlines, so adjacent black cells do not show internal grid seams.
 - 2.5D jump arcs can cross a one-cell black hole or one-cell empty gap when the landing cell is valid.
 - Bricks and boxes are generated one cell at a time as overlay props on top of the painted terrain. Adjacent brick/box cells remain separate props and are not merged into a larger shape.
-- Bricks are standable solid props. If the player jumps while standing on a brick, that brick breaks as the jump starts.
+- Bricks are standable solid props. The first landing arms them; the next landing on their top breaks them. They can also be broken from below by a 2D upward head hit.
 - `HeadBox` paints a special solid box that breaks only from a 2D upward head hit.
 - Boxes are static in 2D. In 2.5D they become tall pushable blocks that the player can shove one grid cell at a time.
 
@@ -66,7 +66,7 @@ This gives stable collision callbacks and makes dimension-aware props much easie
 - White cells become closed 2D walkable regions and flattened 2.5D platforms.
 - Black cells are enterable/inverting regions in 2D and holes in 2.5D.
 - `Brick`, `Box`, and `HeadBox` paint one-cell overlay props on top of the current terrain. Painting a prop onto an empty cell creates a white terrain cell underneath it.
-- `Brick` can be stood on and broken by jumping from its top.
+- `Brick` can be stood on, breaks on the second landing from above, and can be broken from below by a 2D head hit.
 - `Box` is pushable in 2.5D.
 - `HeadBox` is a special 2D head-break box.
 - Switch, exit, and spawn cells are painted from the same editor window.

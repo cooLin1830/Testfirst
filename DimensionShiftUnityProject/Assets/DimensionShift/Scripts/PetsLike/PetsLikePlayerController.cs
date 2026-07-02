@@ -49,6 +49,7 @@ namespace DimensionShift.PetsLike
         private Vector3 lastSafePosition;
         private bool inBlackRegion;
         private bool isGrounded2D;
+        private bool hasTwoDGroundState;
         private bool isArcJumping;
         private bool reachedExit;
         private bool standingOnBlackTopEdge;
@@ -154,11 +155,13 @@ namespace DimensionShift.PetsLike
             {
                 body.useGravity = true;
                 body.constraints |= RigidbodyConstraints.FreezePositionZ;
+                hasTwoDGroundState = false;
                 ApplyTwoDLayerDepth();
                 CapturePreviousTwoDBounds();
             }
             else
             {
+                hasTwoDGroundState = false;
                 body.useGravity = false;
                 body.velocity = Vector3.zero;
                 body.angularVelocity = Vector3.zero;
@@ -173,6 +176,9 @@ namespace DimensionShift.PetsLike
             }
 
             currentGridCoord = coord;
+            isGrounded2D = false;
+            hasTwoDGroundState = false;
+            standingOnBlackTopEdge = false;
             Vector3 target = mode == PetsPerspectiveMode.TwoD
                 ? level.GridToTwoDWorld(coord, twoDDefaultZ) + Vector3.up * 0.55f
                 : level.GridToTopDownWorld(coord, 0.55f);
@@ -224,7 +230,15 @@ namespace DimensionShift.PetsLike
             }
 
             standingOnBlackTopEdge = false;
+            bool hadGroundState = hasTwoDGroundState;
+            bool wasGroundedLastFrame = hadGroundState && isGrounded2D;
             isGrounded2D = CheckGrounded2D();
+            float verticalVelocityAtGroundCheck = body.velocity.y;
+            bool landedOn2DGround = hadGroundState
+                && !wasGroundedLastFrame
+                && isGrounded2D
+                && verticalVelocityAtGroundCheck <= 0.05f;
+            hasTwoDGroundState = true;
             currentGridCoord = ResolveTwoDRuleCoord();
             bool insideBlackRegion = level.IsBlackRegion(currentGridCoord) || IsOverlappingBlackRegion();
             bool wantsJump = jumpBufferTimer > 0f;
@@ -250,11 +264,6 @@ namespace DimensionShift.PetsLike
 
             if (jumpBufferTimer > 0f && (isGrounded2D || insideBlackRegion || standingOnBlackTopEdge))
             {
-                if (isGrounded2D && level != null)
-                {
-                    level.TryBreakFootJumpBrickNear(GetCapsuleBounds());
-                }
-
                 velocity.y = twoDJumpVelocity;
                 jumpBufferTimer = 0f;
                 standingOnBlackTopEdge = false;
@@ -281,6 +290,15 @@ namespace DimensionShift.PetsLike
             SetTwoDGravity(!climbingWhiteStrip);
             body.velocity = velocity;
             ResolveBrickHeadHit();
+            bool brokeLandingBrick = false;
+            if (landedOn2DGround && level != null)
+            {
+                brokeLandingBrick = level.TryBreakFootLandingBrickNear(GetCapsuleBounds());
+                if (brokeLandingBrick)
+                {
+                    isGrounded2D = false;
+                }
+            }
 
             PetsGridCoord nextCoord = ResolveTwoDRuleCoord();
             ApplyBlackRegionEdgeRules(ref nextCoord, previousCoord);
@@ -288,7 +306,7 @@ namespace DimensionShift.PetsLike
             if (level.IsValidPlayerCell(nextCoord, PetsPerspectiveMode.TwoD))
             {
                 currentGridCoord = nextCoord;
-                if (isGrounded2D || insideBlackRegion)
+                if ((isGrounded2D || insideBlackRegion) && !brokeLandingBrick)
                 {
                     RecordSafePosition();
                 }
@@ -559,6 +577,8 @@ namespace DimensionShift.PetsLike
             transform.position = lastSafePosition;
             hasBounceAirJump = false;
             canTriggerBouncePad = true;
+            isGrounded2D = false;
+            hasTwoDGroundState = false;
             currentGridCoord = level != null ? ResolveRuleCoord() : currentGridCoord;
             SetBlackRegionState(level != null && level.IsBlackRegion(currentGridCoord));
             CapturePreviousTwoDBounds();

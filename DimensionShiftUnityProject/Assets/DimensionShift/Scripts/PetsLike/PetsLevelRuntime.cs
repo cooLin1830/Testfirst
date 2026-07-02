@@ -332,7 +332,7 @@ namespace DimensionShift.PetsLike
             breakableBricks.Remove(coord.ToVector2Int());
         }
 
-        public bool TryBreakFootJumpBrickNear(Bounds bounds)
+        public bool TryBreakFootLandingBrickNear(Bounds bounds)
         {
             if (breakableBricks.Count == 0)
             {
@@ -344,7 +344,7 @@ namespace DimensionShift.PetsLike
             foreach (KeyValuePair<Vector2Int, PetsBreakableBrick> entry in breakableBricks)
             {
                 PetsBreakableBrick brick = entry.Value;
-                if (brick == null || brick.IsBroken || !brick.CanBreakFromFootJump)
+                if (brick == null || brick.IsBroken || !brick.CanBreakFromFootLanding)
                 {
                     continue;
                 }
@@ -367,8 +367,7 @@ namespace DimensionShift.PetsLike
                 return false;
             }
 
-            target.Break();
-            return true;
+            return target.RegisterFootLanding();
         }
 
         public bool IsTopDownHole(PetsGridCoord coord)
@@ -617,7 +616,7 @@ namespace DimensionShift.PetsLike
             switch (kind)
             {
                 case PetsPropKind.BreakableBrick:
-                    BuildBreakableBrick(coord, brickMaterial, PetsBreakablePropRule.FootJump);
+                    BuildBreakableBrick(coord, brickMaterial, PetsBreakablePropRule.FootLanding);
                     break;
                 case PetsPropKind.HeadBreakBox:
                     BuildBreakableBrick(coord, boxMaterial, PetsBreakablePropRule.TwoDHeadHit);

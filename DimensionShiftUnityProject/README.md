@@ -43,7 +43,7 @@ Assets/DimensionShift/Scenes/DimensionShiftPainterTest.unity
 - In 2.5D, holding a direction and pressing `Space` performs a short arc jump.
 - A one-cell black hole or empty gap can be jumped across in 2.5D; falling into holes or off platforms respawns the player.
 - Bricks and boxes can be painted as overlay props on top of 2D/2.5D terrain.
-- Bricks can be stood on; jumping again while standing on one breaks it.
+- Bricks can be stood on; the second landing on one from above breaks it, and a 2D upward head hit breaks it immediately.
 - `HeadBox` is a special box that can be broken from below by a 2D upward head hit.
 - Reaching the exit tile ends the prototype.
 

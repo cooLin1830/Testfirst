@@ -4,7 +4,7 @@ namespace DimensionShift.PetsLike
 {
     public enum PetsBreakablePropRule
     {
-        FootJump,
+        FootLanding,
         TwoDHeadHit
     }
 
@@ -18,11 +18,13 @@ namespace DimensionShift.PetsLike
         private PetsGridCoord coord;
         private PetsBreakablePropRule breakRule;
         private bool broken;
+        private bool hasFootLanding;
 
         public PetsGridCoord Coord => coord;
         public bool IsBroken => broken;
-        public bool CanBreakFromFootJump => breakRule == PetsBreakablePropRule.FootJump;
-        public bool CanBreakFromTwoDHeadHit => breakRule == PetsBreakablePropRule.TwoDHeadHit;
+        public bool CanBreakFromFootLanding => breakRule == PetsBreakablePropRule.FootLanding;
+        public bool CanBreakFromTwoDHeadHit => breakRule == PetsBreakablePropRule.FootLanding
+            || breakRule == PetsBreakablePropRule.TwoDHeadHit;
 
         public void Configure(PetsLevelRuntime levelRuntime, PetsGridCoord gridCoord, GameObject twoDObject, GameObject topDownObject, PetsBreakablePropRule rule)
         {
@@ -50,6 +52,23 @@ namespace DimensionShift.PetsLike
             }
 
             SetActive(false, false, false);
+        }
+
+        public bool RegisterFootLanding()
+        {
+            if (broken || !CanBreakFromFootLanding)
+            {
+                return false;
+            }
+
+            if (!hasFootLanding)
+            {
+                hasFootLanding = true;
+                return false;
+            }
+
+            Break();
+            return true;
         }
 
         public override void SetPerspectiveMode(PetsPerspectiveMode mode)
