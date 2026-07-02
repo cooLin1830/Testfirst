@@ -8,6 +8,8 @@ The prototype is code-generated so you can study the mechanics without manually 
 Tools > Dimension Shift > Create Prototype Scene
 Tools > Dimension Shift > Create Tutorial Scene
 Tools > Dimension Shift > Create Painter Test Scene
+Tools > Dimension Shift > Create Map For Current Scene
+Tools > Dimension Shift > Bind Selected Map To Current Scene
 Tools > Dimension Shift > PETS Level Painter
 ```
 
@@ -51,6 +53,9 @@ This gives stable collision callbacks and makes dimension-aware props much easie
 - `Tools > Dimension Shift > PETS Level Painter` opens a grid-painting editor window.
 - `Assets/DimensionShift/EditableLevels/PainterTestLevel.asset` is a starter editable map.
 - `Assets/DimensionShift/Scenes/DimensionShiftPainterTest.unity` is a separate test scene that loads the starter map asset.
+- For another scene, open that scene first, then click `New For Scene` in the painter window or use `Tools > Dimension Shift > Create Map For Current Scene`.
+- To reuse an existing map in a scene, select the `PetsEditableLevelAsset` in the Project window and run `Tools > Dimension Shift > Bind Selected Map To Current Scene`, or assign it in the painter window and click `Bind To Scene`.
+- Scene binding is stored on a `DimensionPrototypeBootstrap` component in that scene. Its `levelKind` is set to `EditableAsset`, and its `editableLevel` reference points to the map asset for that scene.
 - White cells become closed 2D walkable regions and flattened 2.5D platforms.
 - Black cells are enterable/inverting regions in 2D and holes in 2.5D.
 - Switch, exit, and spawn cells are painted from the same editor window.

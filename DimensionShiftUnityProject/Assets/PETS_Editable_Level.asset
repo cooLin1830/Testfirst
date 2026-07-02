@@ -158,9 +158,6 @@ MonoBehaviour:
     y: 5
     kind: 2
   - x: 15
-    y: 7
-    kind: 3
-  - x: 15
     y: 6
     kind: 3
   - x: 16
@@ -171,9 +168,6 @@ MonoBehaviour:
     kind: 3
   - x: 15
     y: 5
-    kind: 3
-  - x: 16
-    y: 7
     kind: 3
   - x: 17
     y: 7
@@ -420,4 +414,7 @@ MonoBehaviour:
     kind: 2
   - x: 32
     y: 14
+    kind: 2
+  - x: 39
+    y: 8
     kind: 2

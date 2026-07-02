@@ -1,5 +1,6 @@
 using DimensionShift.PetsLike;
 using DimensionShift;
+using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -12,6 +13,7 @@ namespace DimensionShiftEditor
         private const string ScenePath = "Assets/DimensionShift/Scenes/DimensionShiftPrototype.unity";
         private const string TutorialScenePath = "Assets/DimensionShift/Scenes/DimensionShiftTutorial.unity";
         private const string PainterTestScenePath = "Assets/DimensionShift/Scenes/DimensionShiftPainterTest.unity";
+        private const string EditableLevelFolder = "Assets/DimensionShift/EditableLevels";
 
         [MenuItem("Tools/Dimension Shift/Create Prototype Scene")]
         public static void CreatePrototypeScene()
@@ -56,6 +58,26 @@ namespace DimensionShiftEditor
             CreateEditablePainterTestScene(asset);
         }
 
+        [MenuItem("Tools/Dimension Shift/Create Map For Current Scene")]
+        public static void CreateEditableLevelForCurrentSceneMenu()
+        {
+            PetsEditableLevelAsset asset = CreateEditableLevelForCurrentScene();
+            BindEditableLevelToCurrentScene(asset);
+        }
+
+        [MenuItem("Tools/Dimension Shift/Bind Selected Map To Current Scene")]
+        public static void BindSelectedEditableLevelToCurrentSceneMenu()
+        {
+            PetsEditableLevelAsset asset = Selection.activeObject as PetsEditableLevelAsset;
+            if (asset == null)
+            {
+                EditorUtility.DisplayDialog("Bind PETS Map", "Select a PETS Editable Level asset first, then run this command again.", "OK");
+                return;
+            }
+
+            BindEditableLevelToCurrentScene(asset);
+        }
+
         public static void CreateEditablePainterTestScene(PetsEditableLevelAsset editableLevel)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -71,6 +93,96 @@ namespace DimensionShiftEditor
             SetBuildScenes(new[] { ScenePath, TutorialScenePath, PainterTestScenePath });
             Selection.activeObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(PainterTestScenePath);
             Debug.Log($"Created PETS-like editable-map test scene at {PainterTestScenePath}");
+        }
+
+        public static PetsEditableLevelAsset CreateEditableLevelForCurrentScene()
+        {
+            EnsureEditableLevelFolder();
+            Scene scene = SceneManager.GetActiveScene();
+            string sceneName = string.IsNullOrEmpty(scene.name) ? "CurrentScene" : scene.name;
+            string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{EditableLevelFolder}/{SanitizeAssetName(sceneName)}_Map.asset");
+
+            PetsEditableLevelAsset asset = ScriptableObject.CreateInstance<PetsEditableLevelAsset>();
+            AssetDatabase.CreateAsset(asset, assetPath);
+            AssetDatabase.SaveAssets();
+            Selection.activeObject = asset;
+            Debug.Log($"Created PETS editable level asset at {assetPath}");
+            return asset;
+        }
+
+        public static PetsEditableLevelAsset CreateAndBindEditableLevelToCurrentScene()
+        {
+            PetsEditableLevelAsset asset = CreateEditableLevelForCurrentScene();
+            BindEditableLevelToCurrentScene(asset);
+            return asset;
+        }
+
+        public static void BindEditableLevelToCurrentScene(PetsEditableLevelAsset editableLevel)
+        {
+            if (editableLevel == null)
+            {
+                EditorUtility.DisplayDialog("Bind PETS Map", "Create or assign a PETS Editable Level asset first.", "OK");
+                return;
+            }
+
+            Scene scene = SceneManager.GetActiveScene();
+            DimensionPrototypeBootstrap bootstrap = FindBootstrapInScene(scene);
+            if (bootstrap == null)
+            {
+                GameObject bootstrapObject = new GameObject("Dimension Editable Level Bootstrap");
+                Undo.RegisterCreatedObjectUndo(bootstrapObject, "Create Dimension Editable Level Bootstrap");
+                SceneManager.MoveGameObjectToScene(bootstrapObject, scene);
+                bootstrap = bootstrapObject.AddComponent<DimensionPrototypeBootstrap>();
+            }
+            else
+            {
+                Undo.RecordObject(bootstrap, "Bind PETS Editable Level");
+            }
+
+            SerializedObject serialized = new SerializedObject(bootstrap);
+            serialized.FindProperty("buildOnStart").boolValue = true;
+            serialized.FindProperty("levelKind").enumValueIndex = (int)PetsPrototypeLevelKind.EditableAsset;
+            serialized.FindProperty("editableLevel").objectReferenceValue = editableLevel;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            EditorUtility.SetDirty(bootstrap);
+            EditorSceneManager.MarkSceneDirty(scene);
+            Selection.activeObject = bootstrap.gameObject;
+            Debug.Log($"Bound PETS editable level '{editableLevel.name}' to scene '{scene.name}'.");
+        }
+
+        public static bool TryGetCurrentSceneEditableLevel(out PetsEditableLevelAsset editableLevel)
+        {
+            editableLevel = null;
+            DimensionPrototypeBootstrap bootstrap = FindBootstrapInScene(SceneManager.GetActiveScene());
+            if (bootstrap == null)
+            {
+                return false;
+            }
+
+            SerializedObject serialized = new SerializedObject(bootstrap);
+            editableLevel = serialized.FindProperty("editableLevel").objectReferenceValue as PetsEditableLevelAsset;
+            return editableLevel != null;
+        }
+
+        private static DimensionPrototypeBootstrap FindBootstrapInScene(Scene scene)
+        {
+            if (!scene.IsValid())
+            {
+                return null;
+            }
+
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                DimensionPrototypeBootstrap bootstrap = roots[i].GetComponentInChildren<DimensionPrototypeBootstrap>(true);
+                if (bootstrap != null)
+                {
+                    return bootstrap;
+                }
+            }
+
+            return null;
         }
 
         private static void EnsureSceneFolder()
@@ -90,6 +202,36 @@ namespace DimensionShiftEditor
             }
 
             EditorBuildSettings.scenes = scenes;
+        }
+
+        private static void EnsureEditableLevelFolder()
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/DimensionShift"))
+            {
+                AssetDatabase.CreateFolder("Assets", "DimensionShift");
+            }
+
+            if (!AssetDatabase.IsValidFolder(EditableLevelFolder))
+            {
+                AssetDatabase.CreateFolder("Assets/DimensionShift", "EditableLevels");
+            }
+        }
+
+        private static string SanitizeAssetName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return "CurrentScene";
+            }
+
+            string sanitized = name;
+            char[] invalidCharacters = Path.GetInvalidFileNameChars();
+            for (int i = 0; i < invalidCharacters.Length; i++)
+            {
+                sanitized = sanitized.Replace(invalidCharacters[i], '_');
+            }
+
+            return sanitized.Replace(' ', '_');
         }
     }
 }

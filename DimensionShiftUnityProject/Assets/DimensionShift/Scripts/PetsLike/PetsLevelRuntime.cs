@@ -71,6 +71,8 @@ namespace DimensionShift.PetsLike
                 BuildTwoPointFiveDCell(cell.Key, cell.Value, whiteMaterial, blackMaterial);
             }
 
+            BuildBlackRegionFills(twoDCells, PetsPerspectiveMode.TwoD, blackMaterial);
+            BuildBlackRegionFills(twoPointFiveDCells, PetsPerspectiveMode.TwoPointFiveD, blackMaterial);
             BuildMergedTwoDShapeInk(blackMaterial);
             BuildMergedTopDownShapeInk(blackMaterial);
 
@@ -316,6 +318,11 @@ namespace DimensionShift.PetsLike
                     continue;
                 }
 
+                if (cell.Value == PetsCellKind.BlackRegion)
+                {
+                    continue;
+                }
+
                 Vector2Int coord = cell.Key;
                 if (!IsTwoDClosedShapeCell(coord + Vector2Int.up))
                 {
@@ -413,6 +420,85 @@ namespace DimensionShift.PetsLike
                     false,
                     false);
                 topDownObjects.Add(hole);
+            }
+        }
+
+        private void BuildBlackRegionFills(Dictionary<Vector2Int, PetsCellKind> source, PetsPerspectiveMode mode, Material material)
+        {
+            HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
+            List<int> ys = new List<int>();
+            foreach (KeyValuePair<Vector2Int, PetsCellKind> cell in source)
+            {
+                if (cell.Value == PetsCellKind.BlackRegion && !ys.Contains(cell.Key.y))
+                {
+                    ys.Add(cell.Key.y);
+                }
+            }
+
+            ys.Sort();
+            for (int i = 0; i < ys.Count; i++)
+            {
+                int y = ys[i];
+                List<int> xs = new List<int>();
+                foreach (KeyValuePair<Vector2Int, PetsCellKind> cell in source)
+                {
+                    if (cell.Value == PetsCellKind.BlackRegion && cell.Key.y == y)
+                    {
+                        xs.Add(cell.Key.x);
+                    }
+                }
+
+                xs.Sort();
+                int index = 0;
+                while (index < xs.Count)
+                {
+                    int startX = xs[index];
+                    int endX = startX;
+                    index++;
+                    while (index < xs.Count && xs[index] == endX + 1)
+                    {
+                        endX = xs[index];
+                        index++;
+                    }
+
+                    Vector2Int startCoord = new Vector2Int(startX, y);
+                    if (visited.Contains(startCoord))
+                    {
+                        continue;
+                    }
+
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        visited.Add(new Vector2Int(x, y));
+                    }
+
+                    float width = (endX - startX + 1) * cellSize;
+                    float centerX = (startX + endX) * 0.5f * cellSize;
+                    if (mode == PetsPerspectiveMode.TwoD)
+                    {
+                        GameObject fill = CreateBox(
+                            $"2D Black Region Fill {startX}-{endX},{y}",
+                            twoDRoot,
+                            new Vector3(centerX, y * cellSize, -0.43f),
+                            new Vector3(width, cellSize, 0.035f),
+                            material,
+                            false,
+                            true);
+                        twoDObjects.Add(fill);
+                    }
+                    else
+                    {
+                        GameObject fill = CreateBox(
+                            $"2.5D Black Region Fill {startX}-{endX},{y}",
+                            topDownRoot,
+                            new Vector3(centerX, 0.095f, y * cellSize),
+                            new Vector3(width, 0.035f, cellSize),
+                            material,
+                            false,
+                            true);
+                        topDownObjects.Add(fill);
+                    }
+                }
             }
         }
 
@@ -876,6 +962,7 @@ namespace DimensionShift.PetsLike
         {
             return kind == PetsCellKind.WhiteInterior
                 || kind == PetsCellKind.WhiteLine
+                || kind == PetsCellKind.BlackRegion
                 || kind == PetsCellKind.SwitchTo2D
                 || kind == PetsCellKind.SwitchToTwoPointFiveD
                 || kind == PetsCellKind.Exit;

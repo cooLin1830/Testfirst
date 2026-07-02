@@ -54,6 +54,21 @@ namespace DimensionShiftEditor
             try
             {
                 levelAsset = (PetsEditableLevelAsset)EditorGUILayout.ObjectField(levelAsset, typeof(PetsEditableLevelAsset), false, GUILayout.MinWidth(220f));
+                if (GUILayout.Button("Use Scene Map", EditorStyles.toolbarButton, GUILayout.Width(104f)))
+                {
+                    QueueEditorAction(UseCurrentSceneMap);
+                }
+
+                if (GUILayout.Button("New For Scene", EditorStyles.toolbarButton, GUILayout.Width(104f)))
+                {
+                    QueueEditorAction(CreateAndBindSceneAsset);
+                }
+
+                if (GUILayout.Button("Bind To Scene", EditorStyles.toolbarButton, GUILayout.Width(104f)))
+                {
+                    QueueEditorAction(BindCurrentAssetToScene);
+                }
+
                 if (GUILayout.Button("New Asset", EditorStyles.toolbarButton, GUILayout.Width(82f)))
                 {
                     QueueEditorAction(CreateAsset);
@@ -287,6 +302,35 @@ namespace DimensionShiftEditor
             AssetDatabase.SaveAssets();
             levelAsset = asset;
             Selection.activeObject = asset;
+        }
+
+        private void UseCurrentSceneMap()
+        {
+            if (DimensionPrototypeSceneBuilder.TryGetCurrentSceneEditableLevel(out PetsEditableLevelAsset sceneLevel))
+            {
+                levelAsset = sceneLevel;
+                Selection.activeObject = sceneLevel;
+                return;
+            }
+
+            EditorUtility.DisplayDialog("Use Scene Map", "The active scene does not have a PETS editable map bound yet. Use New For Scene to create and bind one.", "OK");
+        }
+
+        private void CreateAndBindSceneAsset()
+        {
+            levelAsset = DimensionPrototypeSceneBuilder.CreateAndBindEditableLevelToCurrentScene();
+            Selection.activeObject = levelAsset;
+        }
+
+        private void BindCurrentAssetToScene()
+        {
+            if (levelAsset == null)
+            {
+                EditorUtility.DisplayDialog("Bind To Scene", "Create or assign a PETS Editable Level asset first.", "OK");
+                return;
+            }
+
+            DimensionPrototypeSceneBuilder.BindEditableLevelToCurrentScene(levelAsset);
         }
 
         private void SaveAsset()

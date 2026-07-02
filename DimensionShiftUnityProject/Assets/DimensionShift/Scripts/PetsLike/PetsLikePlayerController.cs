@@ -220,6 +220,19 @@ namespace DimensionShift.PetsLike
 
             standingOnBlackTopEdge = false;
             isGrounded2D = CheckGrounded2D();
+            currentGridCoord = ResolveTwoDRuleCoord();
+            bool insideBlackRegion = level.IsBlackRegion(currentGridCoord) || IsOverlappingBlackRegion();
+            bool wantsJump = jumpBufferTimer > 0f;
+            if (TryResolveBlackTopSupport(out float supportY))
+            {
+                isGrounded2D = true;
+                standingOnBlackTopEdge = true;
+                if (!wantsJump)
+                {
+                    SnapToBlackTopSupport(supportY);
+                }
+            }
+
             PetsGridCoord previousCoord = currentGridCoord;
             float inputX = Input.GetAxisRaw("Horizontal");
             Vector3 velocity = body.velocity;
@@ -227,10 +240,11 @@ namespace DimensionShift.PetsLike
             velocity.x = Mathf.MoveTowards(velocity.x, targetX, twoDAcceleration * Time.fixedDeltaTime);
             velocity.z = 0f;
 
-            if (jumpBufferTimer > 0f && isGrounded2D)
+            if (jumpBufferTimer > 0f && (isGrounded2D || insideBlackRegion || standingOnBlackTopEdge))
             {
                 velocity.y = twoDJumpVelocity;
                 jumpBufferTimer = 0f;
+                standingOnBlackTopEdge = false;
             }
 
             body.velocity = velocity;
@@ -241,13 +255,13 @@ namespace DimensionShift.PetsLike
             if (level.IsValidPlayerCell(nextCoord, PetsPerspectiveMode.TwoD))
             {
                 currentGridCoord = nextCoord;
-                if (isGrounded2D || level.IsBlackRegion(currentGridCoord))
+                if (isGrounded2D || insideBlackRegion)
                 {
                     RecordSafePosition();
                 }
             }
 
-            SetBlackRegionState(level.IsBlackRegion(currentGridCoord) && !standingOnBlackTopEdge);
+            SetBlackRegionState(insideBlackRegion && !standingOnBlackTopEdge);
 
             if (body.position.y < -3f)
             {
@@ -393,6 +407,7 @@ namespace DimensionShift.PetsLike
         {
             Bounds bounds = GetCapsuleBounds();
             float currentBottom = bounds.min.y;
+            bool fallingMeaningfully = body.velocity.y < -0.05f || previousTwoDBottom - currentBottom > 0.015f;
 
             level.CollectBlackRegionsNear(bounds, 0.12f, nearbyBlackRegions);
             for (int i = 0; i < nearbyBlackRegions.Count; i++)
@@ -410,7 +425,7 @@ namespace DimensionShift.PetsLike
                 bool crossedTopEdgeDownward = previousTwoDBottom >= topEdge && currentBottom < topEdge;
                 bool crossedBottomEdgeDownward = previousTwoDBottom >= bottomEdge && currentBottom < bottomEdge;
 
-                if (overlapsBlackHorizontally && isOuterTopEdge && crossedTopEdgeDownward)
+                if (fallingMeaningfully && overlapsBlackHorizontally && isOuterTopEdge && crossedTopEdgeDownward)
                 {
                     BlockTwoDTopEntry(topEdge);
                     standingOnBlackTopEdge = true;
@@ -436,6 +451,78 @@ namespace DimensionShift.PetsLike
             transform.position = blocked;
             body.velocity = new Vector3(body.velocity.x, Mathf.Max(0f, body.velocity.y), 0f);
             CapturePreviousTwoDBounds();
+        }
+
+        private bool TryResolveBlackTopSupport(out float supportY)
+        {
+            supportY = 0f;
+            if (level == null || body == null || body.velocity.y > 0.05f)
+            {
+                return false;
+            }
+
+            Bounds bounds = GetCapsuleBounds();
+            float footY = bounds.min.y;
+            level.CollectBlackRegionsNear(bounds, 0.18f, nearbyBlackRegions);
+            for (int i = 0; i < nearbyBlackRegions.Count; i++)
+            {
+                PetsGridCoord black = nearbyBlackRegions[i];
+                if (level.IsBlackRegion(black + new PetsGridCoord(0, 1)))
+                {
+                    continue;
+                }
+
+                Vector3 blackCenter = level.GridToTwoDWorld(black, twoDDefaultZ);
+                float leftEdge = blackCenter.x - level.CellSize * 0.5f;
+                float rightEdge = blackCenter.x + level.CellSize * 0.5f;
+                float topEdge = blackCenter.y + level.CellSize * 0.5f;
+                bool overlapsX = bounds.max.x > leftEdge + 0.04f && bounds.min.x < rightEdge - 0.04f;
+                bool footNearTop = footY >= topEdge - 0.16f && footY <= topEdge + twoDGroundCheckDistance + 0.16f;
+                if (overlapsX && footNearTop)
+                {
+                    supportY = topEdge;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsOverlappingBlackRegion()
+        {
+            if (level == null)
+            {
+                return false;
+            }
+
+            Bounds bounds = GetCapsuleBounds();
+            level.CollectBlackRegionsNear(bounds, 0.02f, nearbyBlackRegions);
+            float halfSize = level.CellSize * 0.5f;
+            for (int i = 0; i < nearbyBlackRegions.Count; i++)
+            {
+                Vector3 center = level.GridToTwoDWorld(nearbyBlackRegions[i], twoDDefaultZ);
+                bool overlapsX = bounds.max.x > center.x - halfSize + 0.02f
+                    && bounds.min.x < center.x + halfSize - 0.02f;
+                bool overlapsY = bounds.max.y > center.y - halfSize + 0.02f
+                    && bounds.min.y < center.y + halfSize - 0.02f;
+                if (overlapsX && overlapsY)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void SnapToBlackTopSupport(float supportY)
+        {
+            float halfHeight = GetCapsuleHalfHeight();
+            Vector3 supported = body.position;
+            supported.y = supportY + halfHeight + 0.01f;
+            supported.z = twoDDefaultZ;
+            body.position = supported;
+            transform.position = supported;
+            body.velocity = new Vector3(body.velocity.x, Mathf.Max(0f, body.velocity.y), 0f);
         }
 
         private void BlockTwoDDownExit(float bottomEdge)
