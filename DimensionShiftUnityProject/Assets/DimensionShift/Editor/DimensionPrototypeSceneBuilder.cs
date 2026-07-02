@@ -78,6 +78,24 @@ namespace DimensionShiftEditor
             BindEditableLevelToCurrentScene(asset);
         }
 
+        [MenuItem("Tools/Dimension Shift/Ensure Scene Map Preview")]
+        public static void EnsureSceneMapPreviewMenu()
+        {
+            if (!TryGetCurrentSceneEditableLevel(out PetsEditableLevelAsset editableLevel))
+            {
+                EditorUtility.DisplayDialog("PETS Scene Map Preview", "The active scene does not have a bound PETS editable map.", "OK");
+                return;
+            }
+
+            Scene scene = SceneManager.GetActiveScene();
+            PetsSceneMapPreview preview = EnsureSceneMapPreview(scene);
+            Undo.RecordObject(preview, "Ensure PETS Scene Map Preview");
+            preview.EditableLevel = editableLevel;
+            EditorUtility.SetDirty(preview);
+            EditorSceneManager.MarkSceneDirty(scene);
+            Selection.activeObject = preview.gameObject;
+        }
+
         public static void CreateEditablePainterTestScene(PetsEditableLevelAsset editableLevel)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -87,6 +105,9 @@ namespace DimensionShiftEditor
             serialized.FindProperty("levelKind").enumValueIndex = (int)PetsPrototypeLevelKind.EditableAsset;
             serialized.FindProperty("editableLevel").objectReferenceValue = editableLevel;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            PetsSceneMapPreview preview = EnsureSceneMapPreview(scene);
+            preview.EditableLevel = editableLevel;
 
             EnsureSceneFolder();
             EditorSceneManager.SaveScene(scene, PainterTestScenePath);
@@ -145,9 +166,14 @@ namespace DimensionShiftEditor
             serialized.FindProperty("editableLevel").objectReferenceValue = editableLevel;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
+            PetsSceneMapPreview preview = EnsureSceneMapPreview(scene);
+            Undo.RecordObject(preview, "Bind PETS Scene Map Preview");
+            preview.EditableLevel = editableLevel;
+            EditorUtility.SetDirty(preview);
+
             EditorUtility.SetDirty(bootstrap);
             EditorSceneManager.MarkSceneDirty(scene);
-            Selection.activeObject = bootstrap.gameObject;
+            Selection.activeObject = preview.gameObject;
             Debug.Log($"Bound PETS editable level '{editableLevel.name}' to scene '{scene.name}'.");
         }
 
@@ -165,6 +191,11 @@ namespace DimensionShiftEditor
             return editableLevel != null;
         }
 
+        public static void EnsureSceneMapPreviewForCurrentScene()
+        {
+            EnsureSceneMapPreviewMenu();
+        }
+
         private static DimensionPrototypeBootstrap FindBootstrapInScene(Scene scene)
         {
             if (!scene.IsValid())
@@ -179,6 +210,40 @@ namespace DimensionShiftEditor
                 if (bootstrap != null)
                 {
                     return bootstrap;
+                }
+            }
+
+            return null;
+        }
+
+        private static PetsSceneMapPreview EnsureSceneMapPreview(Scene scene)
+        {
+            PetsSceneMapPreview existing = FindSceneMapPreview(scene);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            GameObject previewObject = new GameObject("PETS Scene Map Preview");
+            Undo.RegisterCreatedObjectUndo(previewObject, "Create PETS Scene Map Preview");
+            SceneManager.MoveGameObjectToScene(previewObject, scene);
+            return previewObject.AddComponent<PetsSceneMapPreview>();
+        }
+
+        private static PetsSceneMapPreview FindSceneMapPreview(Scene scene)
+        {
+            if (!scene.IsValid())
+            {
+                return null;
+            }
+
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                PetsSceneMapPreview preview = roots[i].GetComponentInChildren<PetsSceneMapPreview>(true);
+                if (preview != null)
+                {
+                    return preview;
                 }
             }
 

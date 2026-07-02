@@ -10,6 +10,9 @@ namespace DimensionShift
         [SerializeField] private PetsPrototypeLevelKind levelKind = PetsPrototypeLevelKind.MechanicTestRoom;
         [SerializeField] private PetsEditableLevelAsset editableLevel;
 
+        public PetsPrototypeLevelKind LevelKind => levelKind;
+        public PetsEditableLevelAsset EditableLevel => editableLevel;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoCreateInEmptyScene()
         {

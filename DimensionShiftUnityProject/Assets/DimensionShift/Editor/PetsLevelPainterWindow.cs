@@ -26,6 +26,7 @@ namespace DimensionShiftEditor
         private int height = 16;
         private float cellSize = 1.15f;
         private Action queuedEditorAction;
+        private PetsEditableLevelAsset mapSettingsSource;
 
         [MenuItem("Tools/Dimension Shift/PETS Level Painter")]
         public static void Open()
@@ -55,7 +56,13 @@ namespace DimensionShiftEditor
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
             try
             {
-                levelAsset = (PetsEditableLevelAsset)EditorGUILayout.ObjectField(levelAsset, typeof(PetsEditableLevelAsset), false, GUILayout.MinWidth(220f));
+                PetsEditableLevelAsset selectedAsset = (PetsEditableLevelAsset)EditorGUILayout.ObjectField(levelAsset, typeof(PetsEditableLevelAsset), false, GUILayout.MinWidth(220f));
+                if (selectedAsset != levelAsset)
+                {
+                    levelAsset = selectedAsset;
+                    SyncMapSettingsFromAsset();
+                }
+
                 if (GUILayout.Button("Use Scene Map", EditorStyles.toolbarButton, GUILayout.Width(104f)))
                 {
                     QueueEditorAction(UseCurrentSceneMap);
@@ -89,31 +96,29 @@ namespace DimensionShiftEditor
 
         private void DrawMapSettings()
         {
-            EditorGUI.BeginChangeCheck();
+            SyncMapSettingsFromAssetIfNeeded();
             EditorGUILayout.BeginHorizontal();
             try
             {
-                width = EditorGUILayout.IntField("Width", levelAsset.Width, GUILayout.MaxWidth(180f));
-                height = EditorGUILayout.IntField("Height", levelAsset.Height, GUILayout.MaxWidth(180f));
-                cellSize = EditorGUILayout.FloatField("Cell Size", levelAsset.CellSize, GUILayout.MaxWidth(200f));
+                width = EditorGUILayout.IntField("Width", width, GUILayout.MaxWidth(180f));
+                height = EditorGUILayout.IntField("Height", height, GUILayout.MaxWidth(180f));
+                cellSize = EditorGUILayout.FloatField("Cell Size", cellSize, GUILayout.MaxWidth(200f));
                 if (GUILayout.Button("Apply Size", GUILayout.Width(92f)))
                 {
+                    width = Mathf.Max(1, width);
+                    height = Mathf.Max(1, height);
+                    cellSize = Mathf.Max(0.1f, cellSize);
                     Undo.RecordObject(levelAsset, "Resize PETS Level");
                     levelAsset.Resize(width, height);
                     levelAsset.SetCellSize(cellSize);
+                    SyncMapSettingsFromAsset();
                     MarkDirty();
+                    SceneView.RepaintAll();
                 }
             }
             finally
             {
                 EditorGUILayout.EndHorizontal();
-            }
-
-            if (EditorGUI.EndChangeCheck())
-            {
-                width = Mathf.Max(1, width);
-                height = Mathf.Max(1, height);
-                cellSize = Mathf.Max(0.1f, cellSize);
             }
         }
 
@@ -299,6 +304,11 @@ namespace DimensionShiftEditor
                     PetsEditableLevelAsset assetToBuild = levelAsset;
                     QueueEditorAction(() => DimensionPrototypeSceneBuilder.CreateEditablePainterTestScene(assetToBuild));
                 }
+
+                if (GUILayout.Button("Show In Scene"))
+                {
+                    QueueEditorAction(DimensionPrototypeSceneBuilder.EnsureSceneMapPreviewForCurrentScene);
+                }
             }
             finally
             {
@@ -318,6 +328,7 @@ namespace DimensionShiftEditor
             AssetDatabase.CreateAsset(asset, path);
             AssetDatabase.SaveAssets();
             levelAsset = asset;
+            SyncMapSettingsFromAsset();
             Selection.activeObject = asset;
         }
 
@@ -326,6 +337,7 @@ namespace DimensionShiftEditor
             if (DimensionPrototypeSceneBuilder.TryGetCurrentSceneEditableLevel(out PetsEditableLevelAsset sceneLevel))
             {
                 levelAsset = sceneLevel;
+                SyncMapSettingsFromAsset();
                 Selection.activeObject = sceneLevel;
                 return;
             }
@@ -336,6 +348,7 @@ namespace DimensionShiftEditor
         private void CreateAndBindSceneAsset()
         {
             levelAsset = DimensionPrototypeSceneBuilder.CreateAndBindEditableLevelToCurrentScene();
+            SyncMapSettingsFromAsset();
             Selection.activeObject = levelAsset;
         }
 
@@ -364,6 +377,29 @@ namespace DimensionShiftEditor
         private void MarkDirty()
         {
             EditorUtility.SetDirty(levelAsset);
+        }
+
+        private void SyncMapSettingsFromAssetIfNeeded()
+        {
+            if (mapSettingsSource == levelAsset)
+            {
+                return;
+            }
+
+            SyncMapSettingsFromAsset();
+        }
+
+        private void SyncMapSettingsFromAsset()
+        {
+            mapSettingsSource = levelAsset;
+            if (levelAsset == null)
+            {
+                return;
+            }
+
+            width = levelAsset.Width;
+            height = levelAsset.Height;
+            cellSize = levelAsset.CellSize;
         }
 
         private void QueueEditorAction(Action action)

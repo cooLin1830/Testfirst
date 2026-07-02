@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PETS_Editable_Level
   m_EditorClassIdentifier: 
   width: 40
-  height: 16
+  height: 30
   cellSize: 1.15
   spawn:
     x: 3
@@ -416,5 +416,8 @@ MonoBehaviour:
     y: 14
     kind: 2
   - x: 39
+    y: 8
+    kind: 2
+  - x: 36
     y: 8
     kind: 2

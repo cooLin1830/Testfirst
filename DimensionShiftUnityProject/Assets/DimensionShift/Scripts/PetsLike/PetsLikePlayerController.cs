@@ -16,6 +16,7 @@ namespace DimensionShift.PetsLike
         [SerializeField] private float twoDMoveSpeed = 6f;
         [SerializeField] private float twoDAcceleration = 35f;
         [SerializeField] private float twoDJumpVelocity = 7.5f;
+        [SerializeField] private float twoDWhiteStripClimbSpeed = 4.6f;
         [SerializeField] private float twoDGroundCheckRadius = 0.22f;
         [SerializeField] private float twoDGroundCheckDistance = 0.14f;
 
@@ -51,6 +52,7 @@ namespace DimensionShift.PetsLike
         private bool isArcJumping;
         private bool reachedExit;
         private bool standingOnBlackTopEdge;
+        private bool isClimbingWhiteStrip2D;
         private float jumpBufferTimer;
         private float previousTwoDBottom;
         private bool hasPreviousTwoDBounds;
@@ -236,18 +238,23 @@ namespace DimensionShift.PetsLike
 
             PetsGridCoord previousCoord = currentGridCoord;
             float inputX = Input.GetAxisRaw("Horizontal");
+            float inputY = Input.GetAxisRaw("Vertical");
             Vector3 velocity = body.velocity;
             float targetX = inputX * twoDMoveSpeed;
             velocity.x = Mathf.MoveTowards(velocity.x, targetX, twoDAcceleration * Time.fixedDeltaTime);
             velocity.z = 0f;
+
+            bool climbingWhiteStrip = TryApplyTwoDWhiteStripMovement(inputY, ref velocity);
 
             if (jumpBufferTimer > 0f && (isGrounded2D || insideBlackRegion || standingOnBlackTopEdge))
             {
                 velocity.y = twoDJumpVelocity;
                 jumpBufferTimer = 0f;
                 standingOnBlackTopEdge = false;
+                climbingWhiteStrip = false;
             }
 
+            SetTwoDGravity(!climbingWhiteStrip);
             body.velocity = velocity;
             ResolveBrickHeadHit();
 
@@ -271,6 +278,55 @@ namespace DimensionShift.PetsLike
             }
 
             CapturePreviousTwoDBounds();
+        }
+
+        private bool TryApplyTwoDWhiteStripMovement(float verticalInput, ref Vector3 velocity)
+        {
+            if (level == null)
+            {
+                return false;
+            }
+
+            int verticalDirection = verticalInput > 0.01f ? 1 : verticalInput < -0.01f ? -1 : 0;
+            PetsGridCoord stripCoord = level.WorldToGrid(body.position, PetsPerspectiveMode.TwoD);
+            if (!level.CanUseTwoDVerticalWhiteStrip(stripCoord, verticalDirection))
+            {
+                isClimbingWhiteStrip2D = false;
+                return false;
+            }
+
+            Vector3 stripCenter = level.GridToTwoDWorld(stripCoord, twoDDefaultZ);
+            Vector3 position = body.position;
+            position.x = Mathf.MoveTowards(position.x, stripCenter.x, twoDAcceleration * Time.fixedDeltaTime);
+            position.z = twoDDefaultZ;
+            body.position = position;
+            transform.position = position;
+
+            velocity.y = verticalInput * twoDWhiteStripClimbSpeed;
+            if (verticalDirection == 0)
+            {
+                velocity.y = 0f;
+            }
+
+            isGrounded2D = true;
+            isClimbingWhiteStrip2D = true;
+            return true;
+        }
+
+        private void SetTwoDGravity(bool enabled)
+        {
+            if (body == null || currentMode != PetsPerspectiveMode.TwoD || body.useGravity == enabled)
+            {
+                return;
+            }
+
+            body.useGravity = enabled;
+            if (enabled || !isClimbingWhiteStrip2D)
+            {
+                return;
+            }
+
+            body.velocity = new Vector3(body.velocity.x, 0f, 0f);
         }
 
         private void TickTopDown()

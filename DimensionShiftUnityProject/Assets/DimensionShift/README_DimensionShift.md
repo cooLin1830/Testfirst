@@ -10,6 +10,7 @@ Tools > Dimension Shift > Create Tutorial Scene
 Tools > Dimension Shift > Create Painter Test Scene
 Tools > Dimension Shift > Create Map For Current Scene
 Tools > Dimension Shift > Bind Selected Map To Current Scene
+Tools > Dimension Shift > Ensure Scene Map Preview
 Tools > Dimension Shift > PETS Level Painter
 ```
 
@@ -59,6 +60,8 @@ This gives stable collision callbacks and makes dimension-aware props much easie
 - For another scene, open that scene first, then click `New For Scene` in the painter window or use `Tools > Dimension Shift > Create Map For Current Scene`.
 - To reuse an existing map in a scene, select the `PetsEditableLevelAsset` in the Project window and run `Tools > Dimension Shift > Bind Selected Map To Current Scene`, or assign it in the painter window and click `Bind To Scene`.
 - Scene binding is stored on a `DimensionPrototypeBootstrap` component in that scene. Its `levelKind` is set to `EditableAsset`, and its `editableLevel` reference points to the map asset for that scene.
+- Binding or creating a scene map also creates a `PETS Scene Map Preview` object. Select it to view the editable grid in the Scene view and paint directly there.
+- If an older scene has a bound map but no preview object, use `Tools > Dimension Shift > Ensure Scene Map Preview` or click `Show In Scene` in the painter window.
 - White cells become closed 2D walkable regions and flattened 2.5D platforms.
 - Black cells are enterable/inverting regions in 2D and holes in 2.5D.
 - `Brick` paints a one-cell breakable brick on a white terrain cell.

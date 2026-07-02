@@ -347,6 +347,67 @@ namespace DimensionShift.PetsLike
                 || kind == PetsCellKind.PushBox;
         }
 
+        public bool CanUseTwoDVerticalWhiteStrip(PetsGridCoord coord, int verticalDirection)
+        {
+            if (IsTwoDVerticalWhiteStripCell(coord))
+            {
+                return true;
+            }
+
+            if (!IsTwoDClimbableWhiteCell(coord))
+            {
+                return false;
+            }
+
+            if (verticalDirection > 0)
+            {
+                return IsTwoDVerticalWhiteStripCell(coord + new PetsGridCoord(0, 1));
+            }
+
+            if (verticalDirection < 0)
+            {
+                return IsTwoDVerticalWhiteStripCell(coord + new PetsGridCoord(0, -1));
+            }
+
+            return false;
+        }
+
+        private bool IsTwoDVerticalWhiteStripCell(PetsGridCoord coord)
+        {
+            if (!IsTwoDClimbableWhiteCell(coord))
+            {
+                return false;
+            }
+
+            bool up = IsTwoDClimbableWhiteCell(coord + new PetsGridCoord(0, 1));
+            bool down = IsTwoDClimbableWhiteCell(coord + new PetsGridCoord(0, -1));
+            bool right = IsTwoDClimbableWhiteCell(coord + new PetsGridCoord(1, 0));
+            bool left = IsTwoDClimbableWhiteCell(coord + new PetsGridCoord(-1, 0));
+            bool hasVerticalNeighbor = up || down;
+            int whiteNeighborCount = (up ? 1 : 0) + (down ? 1 : 0) + (right ? 1 : 0) + (left ? 1 : 0);
+            bool partOfFilledPatch = (up && right && IsTwoDClimbableWhiteCell(coord + new PetsGridCoord(1, 1)))
+                || (up && left && IsTwoDClimbableWhiteCell(coord + new PetsGridCoord(-1, 1)))
+                || (down && right && IsTwoDClimbableWhiteCell(coord + new PetsGridCoord(1, -1)))
+                || (down && left && IsTwoDClimbableWhiteCell(coord + new PetsGridCoord(-1, -1)));
+
+            return hasVerticalNeighbor && whiteNeighborCount <= 2 && !partOfFilledPatch;
+        }
+
+        private bool IsTwoDClimbableWhiteCell(PetsGridCoord coord)
+        {
+            if (Definition == null || !Definition.Contains(coord))
+            {
+                return false;
+            }
+
+            PetsCellKind kind = GetCell(coord, PetsPerspectiveMode.TwoD);
+            return kind == PetsCellKind.WhiteInterior
+                || kind == PetsCellKind.WhiteLine
+                || kind == PetsCellKind.SwitchTo2D
+                || kind == PetsCellKind.SwitchToTwoPointFiveD
+                || kind == PetsCellKind.Exit;
+        }
+
         public override void SetPerspectiveMode(PetsPerspectiveMode mode)
         {
             currentMode = mode;
@@ -556,6 +617,7 @@ namespace DimensionShift.PetsLike
                 material,
                 true,
                 true);
+            AlignTwoDPropColliderToPhysicsPlane(twoDView);
 
             GameObject topDownView = CreateBox(
                 "2.5D Box",
@@ -572,6 +634,29 @@ namespace DimensionShift.PetsLike
             PetsPushBox pushBox = root.AddComponent<PetsPushBox>();
             pushBox.Configure(this, PetsGridCoord.FromVector2Int(coord), twoDView, topDownView, body);
             pushBoxes[coord] = pushBox;
+        }
+
+        private void AlignTwoDPropColliderToPhysicsPlane(GameObject prop)
+        {
+            if (prop == null)
+            {
+                return;
+            }
+
+            BoxCollider collider = prop.GetComponent<BoxCollider>();
+            if (collider == null)
+            {
+                return;
+            }
+
+            Vector3 localPhysicsCenter = prop.transform.InverseTransformPoint(new Vector3(prop.transform.position.x, prop.transform.position.y, 0f));
+            Vector3 center = collider.center;
+            center.z = localPhysicsCenter.z;
+            collider.center = center;
+
+            Vector3 size = collider.size;
+            size.z = twoDLineDepth / Mathf.Max(0.001f, Mathf.Abs(prop.transform.lossyScale.z));
+            collider.size = size;
         }
 
         private void BuildBlackRegionFills(Dictionary<Vector2Int, PetsCellKind> source, PetsPerspectiveMode mode, Material material)

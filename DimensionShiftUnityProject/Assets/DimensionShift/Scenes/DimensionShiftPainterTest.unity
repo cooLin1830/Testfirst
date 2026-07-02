@@ -122,7 +122,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &703493857
+--- !u!1 &385313122
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -130,8 +130,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 703493859}
-  - component: {fileID: 703493858}
+  - component: {fileID: 385313124}
+  - component: {fileID: 385313123}
   m_Layer: 0
   m_Name: Dimension Painter Test Bootstrap
   m_TagString: Untagged
@@ -139,13 +139,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &703493858
+--- !u!114 &385313123
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 703493857}
+  m_GameObject: {fileID: 385313122}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7f2dfc9a5d444e2da9af09d57f7cf4a7, type: 3}
@@ -155,13 +155,71 @@ MonoBehaviour:
   rebuildIfManagerExists: 0
   levelKind: 2
   editableLevel: {fileID: 11400000, guid: 1065fc439439d6f4fa8ca43f1742f2a8, type: 2}
---- !u!4 &703493859
+--- !u!4 &385313124
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 703493857}
+  m_GameObject: {fileID: 385313122}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &558838177
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 558838179}
+  - component: {fileID: 558838178}
+  m_Layer: 0
+  m_Name: PETS Scene Map Preview
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &558838178
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 558838177}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 155f7bd34b36c674e834abb70e9a1021, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  editableLevel: {fileID: 11400000, guid: 1065fc439439d6f4fa8ca43f1742f2a8, type: 2}
+  showGrid: 1
+  showCells: 1
+  showLabels: 1
+  gridColor: {r: 0, g: 0, b: 0, a: 0.18}
+  emptyColor: {r: 1, g: 1, b: 1, a: 0.08}
+  whiteColor: {r: 1, g: 1, b: 1, a: 0.65}
+  blackColor: {r: 0, g: 0, b: 0, a: 0.78}
+  switchTo25DColor: {r: 0.12, g: 0.52, b: 1, a: 0.72}
+  switchTo2DColor: {r: 0.15, g: 0.85, b: 0.38, a: 0.72}
+  exitColor: {r: 1, g: 0.45, b: 0.12, a: 0.72}
+  brickColor: {r: 0.78, g: 0.25, b: 0.18, a: 0.82}
+  boxColor: {r: 0.72, g: 0.48, b: 0.22, a: 0.82}
+  spawnColor: {r: 0.28, g: 0.36, b: 1, a: 0.86}
+--- !u!4 &558838179
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 558838177}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -174,4 +232,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 703493859}
+  - {fileID: 385313124}
+  - {fileID: 558838179}
