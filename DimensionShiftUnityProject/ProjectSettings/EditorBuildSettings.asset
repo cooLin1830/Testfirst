@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/DimensionShift/Scenes/DimensionShiftPrototype.unity
+    guid: 3ac92e7fead34d329d92ff2f87c9c28d
+  - enabled: 1
+    path: Assets/DimensionShift/Scenes/DimensionShiftTutorial.unity
+    guid: 8b4d09f6db5e45d58fe71f6c98774fb6
+  - enabled: 1
+    path: Assets/DimensionShift/Scenes/DimensionShiftPainterTest.unity
+    guid: d1823fe6e78e4ee8a5cd536780b6d62b
+  m_configObjects: {}
