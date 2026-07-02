@@ -7,6 +7,7 @@ namespace DimensionShift.PetsLike
     {
         private readonly Dictionary<Vector2Int, PetsCellKind> twoDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsCellKind> twoPointFiveDCells = new Dictionary<Vector2Int, PetsCellKind>();
+        private readonly Dictionary<Vector2Int, PetsPropKind> props = new Dictionary<Vector2Int, PetsPropKind>();
         private bool hasTwoPointFiveDOverride;
 
         public int Width { get; }
@@ -17,6 +18,7 @@ namespace DimensionShift.PetsLike
         public IEnumerable<KeyValuePair<Vector2Int, PetsCellKind>> Cells => twoDCells;
         public IEnumerable<KeyValuePair<Vector2Int, PetsCellKind>> TwoDCells => twoDCells;
         public IEnumerable<KeyValuePair<Vector2Int, PetsCellKind>> TwoPointFiveDCells => hasTwoPointFiveDOverride ? twoPointFiveDCells : twoDCells;
+        public IEnumerable<KeyValuePair<Vector2Int, PetsPropKind>> Props => props;
 
         public PetsLevelDefinition(int width, int height, float cellSize)
         {
@@ -28,15 +30,52 @@ namespace DimensionShift.PetsLike
 
         public void SetCell(int x, int y, PetsCellKind kind)
         {
+            if (TryConvertLegacyPropCell(kind, out PetsPropKind propKind))
+            {
+                SetProp(x, y, propKind);
+                EnsureTerrainForProp(twoDCells, x, y);
+                if (!hasTwoPointFiveDOverride)
+                {
+                    EnsureTerrainForProp(twoPointFiveDCells, x, y);
+                }
+
+                return;
+            }
+
             SetCellRaw(twoDCells, x, y, kind);
             if (!hasTwoPointFiveDOverride)
             {
                 SetCellRaw(twoPointFiveDCells, x, y, kind);
             }
+
+            if (kind == PetsCellKind.Empty)
+            {
+                SetProp(x, y, PetsPropKind.None);
+            }
         }
 
         public void SetCell(int x, int y, PetsCellKind kind, PetsPerspectiveMode mode)
         {
+            if (TryConvertLegacyPropCell(kind, out PetsPropKind propKind))
+            {
+                SetProp(x, y, propKind);
+                if (mode == PetsPerspectiveMode.TwoPointFiveD)
+                {
+                    EnsureTwoPointFiveDOverride();
+                    EnsureTerrainForProp(twoPointFiveDCells, x, y);
+                }
+                else
+                {
+                    EnsureTerrainForProp(twoDCells, x, y);
+                    if (!hasTwoPointFiveDOverride)
+                    {
+                        EnsureTerrainForProp(twoPointFiveDCells, x, y);
+                    }
+                }
+
+                return;
+            }
+
             if (mode == PetsPerspectiveMode.TwoPointFiveD)
             {
                 EnsureTwoPointFiveDOverride();
@@ -45,6 +84,20 @@ namespace DimensionShift.PetsLike
             }
 
             SetCell(x, y, kind);
+        }
+
+        public void SetProp(int x, int y, PetsPropKind kind)
+        {
+            Vector2Int coord = new Vector2Int(x, y);
+            if (kind == PetsPropKind.None)
+            {
+                props.Remove(coord);
+                return;
+            }
+
+            props[coord] = kind;
+            EnsureTerrainForProp(twoDCells, x, y);
+            EnsureTerrainForProp(twoPointFiveDCells, x, y);
         }
 
         public void FillRect(RectInt rect, PetsCellKind kind)
@@ -112,6 +165,16 @@ namespace DimensionShift.PetsLike
             return PetsCellKind.Empty;
         }
 
+        public PetsPropKind GetProp(PetsGridCoord coord)
+        {
+            return GetProp(coord.x, coord.y);
+        }
+
+        public PetsPropKind GetProp(int x, int y)
+        {
+            return props.TryGetValue(new Vector2Int(x, y), out PetsPropKind kind) ? kind : PetsPropKind.None;
+        }
+
         public bool Contains(PetsGridCoord coord)
         {
             return coord.x >= 0 && coord.y >= 0 && coord.x < Width && coord.y < Height;
@@ -127,6 +190,34 @@ namespace DimensionShift.PetsLike
             }
 
             target[coord] = kind;
+        }
+
+        private static void EnsureTerrainForProp(Dictionary<Vector2Int, PetsCellKind> target, int x, int y)
+        {
+            Vector2Int coord = new Vector2Int(x, y);
+            if (!target.ContainsKey(coord))
+            {
+                target[coord] = PetsCellKind.WhiteInterior;
+            }
+        }
+
+        private static bool TryConvertLegacyPropCell(PetsCellKind kind, out PetsPropKind propKind)
+        {
+            switch (kind)
+            {
+                case PetsCellKind.BreakableBrick:
+                    propKind = PetsPropKind.BreakableBrick;
+                    return true;
+                case PetsCellKind.PushBox:
+                    propKind = PetsPropKind.PushBox;
+                    return true;
+                case PetsCellKind.HeadBreakBox:
+                    propKind = PetsPropKind.HeadBreakBox;
+                    return true;
+                default:
+                    propKind = PetsPropKind.None;
+                    return false;
+            }
         }
 
         private void EnsureTwoPointFiveDOverride()

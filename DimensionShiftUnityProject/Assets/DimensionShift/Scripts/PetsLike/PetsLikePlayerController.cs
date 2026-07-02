@@ -53,6 +53,8 @@ namespace DimensionShift.PetsLike
         private bool reachedExit;
         private bool standingOnBlackTopEdge;
         private bool isClimbingWhiteStrip2D;
+        private bool hasBounceAirJump;
+        private bool canTriggerBouncePad = true;
         private float jumpBufferTimer;
         private float previousTwoDBottom;
         private bool hasPreviousTwoDBounds;
@@ -248,10 +250,32 @@ namespace DimensionShift.PetsLike
 
             if (jumpBufferTimer > 0f && (isGrounded2D || insideBlackRegion || standingOnBlackTopEdge))
             {
+                if (isGrounded2D && level != null)
+                {
+                    level.TryBreakFootJumpBrickNear(GetCapsuleBounds());
+                }
+
                 velocity.y = twoDJumpVelocity;
                 jumpBufferTimer = 0f;
                 standingOnBlackTopEdge = false;
                 climbingWhiteStrip = false;
+                hasBounceAirJump = false;
+            }
+            else if (jumpBufferTimer > 0f && hasBounceAirJump)
+            {
+                velocity.y = twoDJumpVelocity;
+                jumpBufferTimer = 0f;
+                climbingWhiteStrip = false;
+                hasBounceAirJump = false;
+            }
+
+            if (isGrounded2D || insideBlackRegion || standingOnBlackTopEdge)
+            {
+                if (body.velocity.y <= 0.05f)
+                {
+                    canTriggerBouncePad = true;
+                    hasBounceAirJump = false;
+                }
             }
 
             SetTwoDGravity(!climbingWhiteStrip);
@@ -311,6 +335,26 @@ namespace DimensionShift.PetsLike
             isGrounded2D = true;
             isClimbingWhiteStrip2D = true;
             return true;
+        }
+
+        public void BounceFromPad(float bounceVelocity)
+        {
+            if (currentMode != PetsPerspectiveMode.TwoD || body == null || !canTriggerBouncePad)
+            {
+                return;
+            }
+
+            Vector3 velocity = body.velocity;
+            velocity.y = Mathf.Max(velocity.y, bounceVelocity);
+            velocity.z = 0f;
+            body.velocity = velocity;
+            body.useGravity = true;
+            isClimbingWhiteStrip2D = false;
+            isGrounded2D = false;
+            standingOnBlackTopEdge = false;
+            hasBounceAirJump = true;
+            canTriggerBouncePad = false;
+            jumpBufferTimer = 0f;
         }
 
         private void SetTwoDGravity(bool enabled)
@@ -453,7 +497,7 @@ namespace DimensionShift.PetsLike
                 }
 
                 PetsBreakableBrick brick = hit.GetComponentInParent<PetsBreakableBrick>();
-                if (brick == null || brick.IsBroken)
+                if (brick == null || brick.IsBroken || !brick.CanBreakFromTwoDHeadHit)
                 {
                     continue;
                 }
@@ -513,6 +557,8 @@ namespace DimensionShift.PetsLike
             body.angularVelocity = Vector3.zero;
             body.position = lastSafePosition;
             transform.position = lastSafePosition;
+            hasBounceAirJump = false;
+            canTriggerBouncePad = true;
             currentGridCoord = level != null ? ResolveRuleCoord() : currentGridCoord;
             SetBlackRegionState(level != null && level.IsBlackRegion(currentGridCoord));
             CapturePreviousTwoDBounds();

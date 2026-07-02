@@ -393,10 +393,10 @@ MonoBehaviour:
     kind: 2
   - x: 32
     y: 13
-    kind: 2
+    kind: 9
   - x: 33
     y: 13
-    kind: 2
+    kind: 9
   - x: 34
     y: 13
     kind: 2
@@ -420,4 +420,28 @@ MonoBehaviour:
     kind: 2
   - x: 36
     y: 8
+    kind: 2
+  - x: 32
+    y: 15
+    kind: 2
+  - x: 33
+    y: 15
+    kind: 2
+  - x: 33
+    y: 16
+    kind: 2
+  - x: 32
+    y: 16
+    kind: 2
+  - x: 32
+    y: 17
+    kind: 2
+  - x: 32
+    y: 18
+    kind: 2
+  - x: 33
+    y: 18
+    kind: 2
+  - x: 33
+    y: 17
     kind: 2

@@ -42,6 +42,9 @@ Assets/DimensionShift/Scenes/DimensionShiftPainterTest.unity
 - 2.5D black regions become holes.
 - In 2.5D, holding a direction and pressing `Space` performs a short arc jump.
 - A one-cell black hole or empty gap can be jumped across in 2.5D; falling into holes or off platforms respawns the player.
+- Bricks and boxes can be painted as overlay props on top of 2D/2.5D terrain.
+- Bricks can be stood on; jumping again while standing on one breaks it.
+- `HeadBox` is a special box that can be broken from below by a 2D upward head hit.
 - Reaching the exit tile ends the prototype.
 
 ## Important Scripts
@@ -76,4 +79,4 @@ The prototype now includes a first-pass visual layer: paper-white background, bl
 
 ## Map Painter
 
-Open `Tools > Dimension Shift > PETS Level Painter` to paint a 2D grid map into a `PETS Editable Level` asset. Paint white walkable regions, black regions, `2.5D` / `2D` switch tiles, the exit, and the spawn point. The runtime uses the same painted 2D map to generate the 2D side-view and automatically flatten it into the 2.5D perspective view.
+Open `Tools > Dimension Shift > PETS Level Painter` to paint a 2D grid map into a `PETS Editable Level` asset. Paint white walkable regions, black regions, `2.5D` / `2D` switch tiles, the exit, spawn, and overlay props such as Brick, Box, and HeadBox. The runtime uses the same painted 2D map to generate the 2D side-view and automatically flatten it into the 2.5D perspective view.

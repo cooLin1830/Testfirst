@@ -2,6 +2,12 @@ using UnityEngine;
 
 namespace DimensionShift.PetsLike
 {
+    public enum PetsBreakablePropRule
+    {
+        FootJump,
+        TwoDHeadHit
+    }
+
     public sealed class PetsBreakableBrick : PetsPerspectiveListenerBehaviour
     {
         private GameObject twoDView;
@@ -10,12 +16,15 @@ namespace DimensionShift.PetsLike
         private Collider topDownCollider;
         private PetsLevelRuntime level;
         private PetsGridCoord coord;
+        private PetsBreakablePropRule breakRule;
         private bool broken;
 
         public PetsGridCoord Coord => coord;
         public bool IsBroken => broken;
+        public bool CanBreakFromFootJump => breakRule == PetsBreakablePropRule.FootJump;
+        public bool CanBreakFromTwoDHeadHit => breakRule == PetsBreakablePropRule.TwoDHeadHit;
 
-        public void Configure(PetsLevelRuntime levelRuntime, PetsGridCoord gridCoord, GameObject twoDObject, GameObject topDownObject)
+        public void Configure(PetsLevelRuntime levelRuntime, PetsGridCoord gridCoord, GameObject twoDObject, GameObject topDownObject, PetsBreakablePropRule rule)
         {
             level = levelRuntime;
             coord = gridCoord;
@@ -23,6 +32,7 @@ namespace DimensionShift.PetsLike
             topDownView = topDownObject;
             twoDCollider = twoDView != null ? twoDView.GetComponent<Collider>() : null;
             topDownCollider = topDownView != null ? topDownView.GetComponent<Collider>() : null;
+            breakRule = rule;
             SetPerspectiveMode(PetsModeManager.Instance != null ? PetsModeManager.Instance.CurrentMode : PetsPerspectiveMode.TwoD);
         }
 

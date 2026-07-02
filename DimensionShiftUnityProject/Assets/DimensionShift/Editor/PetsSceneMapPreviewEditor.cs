@@ -42,7 +42,7 @@ namespace DimensionShiftEditor
                 }
             }
 
-            EditorGUILayout.HelpBox("Select this preview, then paint directly in the Scene view. Left-click or drag paints the selected brush. The Spawn brush moves the player start.", MessageType.Info);
+            EditorGUILayout.HelpBox("Select this preview, then paint directly in the Scene view. Left-click or drag paints the selected brush. The Spawn brush moves the player start without changing terrain.", MessageType.Info);
         }
 
         private static void DrawBrushToolbar()
@@ -67,6 +67,17 @@ namespace DimensionShiftEditor
                 DrawBrushButton("Exit", PetsCellKind.Exit);
                 DrawBrushButton("Brick", PetsCellKind.BreakableBrick);
                 DrawBrushButton("Box", PetsCellKind.PushBox);
+                DrawBrushButton("HeadBox", PetsCellKind.HeadBreakBox);
+            }
+            finally
+            {
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            try
+            {
+                DrawBrushButton("Bounce", PetsCellKind.BouncePad);
                 DrawBrushButton("Erase", PetsCellKind.Empty);
                 DrawBrushButton("Spawn", PetsCellKind.WhiteLine);
             }
@@ -113,7 +124,8 @@ namespace DimensionShiftEditor
                     for (int x = 0; x < level.Width; x++)
                     {
                         PetsCellKind kind = level.GetCell(x, y);
-                        DrawCell(preview, origin, cellSize, x, y, kind);
+                        PetsPropKind prop = level.GetProp(x, y);
+                        DrawCell(preview, origin, cellSize, x, y, kind, prop);
                     }
                 }
 
@@ -126,16 +138,16 @@ namespace DimensionShiftEditor
             }
         }
 
-        private static void DrawCell(PetsSceneMapPreview preview, Vector3 origin, float cellSize, int x, int y, PetsCellKind kind)
+        private static void DrawCell(PetsSceneMapPreview preview, Vector3 origin, float cellSize, int x, int y, PetsCellKind kind, PetsPropKind prop)
         {
             Vector3 center = origin + new Vector3(x * cellSize, y * cellSize, 0f);
             Color color = kind == PetsCellKind.Empty ? preview.EmptyColor : ColorFor(preview, kind);
             Vector3 size = Vector3.one * cellSize * 0.92f;
 
-            if (IsPropKind(kind))
+            if (prop != PetsPropKind.None)
             {
-                Handles.DrawSolidRectangleWithOutline(CellCorners(center, size, -0.055f), preview.WhiteColor, Color.clear);
-                Handles.DrawSolidRectangleWithOutline(CellCorners(center, Vector3.one * cellSize * 0.52f, -0.065f), color, Color.clear);
+                Handles.DrawSolidRectangleWithOutline(CellCorners(center, size, -0.055f), kind == PetsCellKind.Empty ? preview.WhiteColor : color, Color.clear);
+                Handles.DrawSolidRectangleWithOutline(CellCorners(center, Vector3.one * cellSize * 0.52f, -0.065f), ColorFor(preview, prop), Color.clear);
             }
             else if (kind != PetsCellKind.Empty)
             {
@@ -144,7 +156,7 @@ namespace DimensionShiftEditor
 
             if (preview.ShowLabels)
             {
-                string label = LabelFor(kind);
+                string label = prop != PetsPropKind.None ? LabelFor(prop) : LabelFor(kind);
                 if (!string.IsNullOrEmpty(label))
                 {
                     DrawLabel(center + Vector3.forward * -0.08f, label, kind == PetsCellKind.BlackRegion ? Color.white : Color.black);
@@ -239,14 +251,10 @@ namespace DimensionShiftEditor
             if (brush == PetsCellKind.WhiteLine)
             {
                 level.SetSpawn(new PetsGridCoord(x, y));
-                if (level.GetCell(x, y) == PetsCellKind.Empty)
-                {
-                    level.SetCell(x, y, PetsCellKind.WhiteInterior);
-                }
             }
             else
             {
-                level.SetCell(x, y, brush);
+                PaintBrush(level, x, y);
             }
 
             EditorUtility.SetDirty(level);
@@ -270,15 +278,28 @@ namespace DimensionShiftEditor
                     return preview.BrickColor;
                 case PetsCellKind.PushBox:
                     return preview.BoxColor;
+                case PetsCellKind.HeadBreakBox:
+                    return preview.HeadBreakBoxColor;
+                case PetsCellKind.BouncePad:
+                    return preview.BouncePadColor;
                 default:
                     return preview.WhiteColor;
             }
         }
 
-        private static bool IsPropKind(PetsCellKind kind)
+        private static Color ColorFor(PetsSceneMapPreview preview, PetsPropKind kind)
         {
-            return kind == PetsCellKind.BreakableBrick
-                || kind == PetsCellKind.PushBox;
+            switch (kind)
+            {
+                case PetsPropKind.BreakableBrick:
+                    return preview.BrickColor;
+                case PetsPropKind.PushBox:
+                    return preview.BoxColor;
+                case PetsPropKind.HeadBreakBox:
+                    return preview.HeadBreakBoxColor;
+                default:
+                    return preview.WhiteColor;
+            }
         }
 
         private static string LabelFor(PetsCellKind kind)
@@ -297,8 +318,69 @@ namespace DimensionShiftEditor
                     return "BR";
                 case PetsCellKind.PushBox:
                     return "BOX";
+                case PetsCellKind.HeadBreakBox:
+                    return "HEAD";
+                case PetsCellKind.BouncePad:
+                    return "UP";
                 default:
                     return string.Empty;
+            }
+        }
+
+        private static string LabelFor(PetsPropKind kind)
+        {
+            switch (kind)
+            {
+                case PetsPropKind.BreakableBrick:
+                    return "BR";
+                case PetsPropKind.PushBox:
+                    return "BOX";
+                case PetsPropKind.HeadBreakBox:
+                    return "HEAD";
+                default:
+                    return string.Empty;
+            }
+        }
+
+        private static void PaintBrush(PetsEditableLevelAsset level, int x, int y)
+        {
+            if (brush == PetsCellKind.Empty)
+            {
+                level.SetCell(x, y, PetsCellKind.Empty);
+                level.SetProp(x, y, PetsPropKind.None);
+                return;
+            }
+
+            if (TryBrushToProp(brush, out PetsPropKind prop))
+            {
+                level.SetProp(x, y, prop);
+                if (level.GetCell(x, y) == PetsCellKind.Empty)
+                {
+                    level.SetCell(x, y, PetsCellKind.WhiteInterior);
+                }
+
+                return;
+            }
+
+            level.SetCell(x, y, brush);
+        }
+
+        private static bool TryBrushToProp(PetsCellKind brushKind, out PetsPropKind prop)
+        {
+            switch (brushKind)
+            {
+                case PetsCellKind.BreakableBrick:
+                    prop = PetsPropKind.BreakableBrick;
+                    return true;
+                case PetsCellKind.PushBox:
+                    prop = PetsPropKind.PushBox;
+                    return true;
+                case PetsCellKind.HeadBreakBox:
+                    prop = PetsPropKind.HeadBreakBox;
+                    return true;
+                default:
+                    prop = PetsPropKind.None;
+                    return false;
             }
         }
     }

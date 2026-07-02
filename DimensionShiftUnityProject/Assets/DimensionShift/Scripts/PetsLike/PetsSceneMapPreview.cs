@@ -18,6 +18,8 @@ namespace DimensionShift.PetsLike
         [SerializeField] private Color exitColor = new Color(1f, 0.45f, 0.12f, 0.72f);
         [SerializeField] private Color brickColor = new Color(0.78f, 0.25f, 0.18f, 0.82f);
         [SerializeField] private Color boxColor = new Color(0.72f, 0.48f, 0.22f, 0.82f);
+        [SerializeField] private Color headBreakBoxColor = new Color(0.62f, 0.34f, 0.82f, 0.82f);
+        [SerializeField] private Color bouncePadColor = new Color(1f, 0.82f, 0.16f, 0.82f);
         [SerializeField] private Color spawnColor = new Color(0.28f, 0.36f, 1f, 0.86f);
 
         public PetsEditableLevelAsset EditableLevel
@@ -39,6 +41,8 @@ namespace DimensionShift.PetsLike
         public Color ExitColor => exitColor;
         public Color BrickColor => brickColor;
         public Color BoxColor => boxColor;
+        public Color HeadBreakBoxColor => headBreakBoxColor;
+        public Color BouncePadColor => bouncePadColor;
         public Color SpawnColor => spawnColor;
 
         private void Reset()

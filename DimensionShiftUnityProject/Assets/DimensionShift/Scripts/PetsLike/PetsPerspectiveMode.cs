@@ -16,7 +16,17 @@ namespace DimensionShift.PetsLike
         SwitchToTwoPointFiveD,
         Exit,
         BreakableBrick,
-        PushBox
+        PushBox,
+        BouncePad,
+        HeadBreakBox
+    }
+
+    public enum PetsPropKind
+    {
+        None,
+        BreakableBrick,
+        PushBox,
+        HeadBreakBox
     }
 
     public interface IPetsPerspectiveListener
