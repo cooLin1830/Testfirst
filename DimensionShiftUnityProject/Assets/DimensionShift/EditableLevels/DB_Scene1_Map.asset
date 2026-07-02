@@ -101,16 +101,7 @@ MonoBehaviour:
     y: 26
     kind: 2
   - x: 16
-    y: 26
-    kind: 7
-  - x: 16
     y: 25
-    kind: 7
-  - x: 17
-    y: 25
-    kind: 7
-  - x: 17
-    y: 26
     kind: 7
   - x: 15
     y: 28
@@ -1273,98 +1264,35 @@ MonoBehaviour:
   - x: 41
     y: 13
     kind: 2
-  - x: 42
-    y: 13
+  - x: 41
+    y: 25
     kind: 2
-  - x: 43
-    y: 13
+  - x: 41
+    y: 26
     kind: 2
-  - x: 43
-    y: 14
+  - x: 41
+    y: 27
     kind: 2
-  - x: 43
+  - x: 41
+    y: 23
+    kind: 2
+  - x: 41
+    y: 22
+    kind: 2
+  - x: 41
+    y: 18
+    kind: 2
+  - x: 41
+    y: 16
+    kind: 2
+  - x: 41
     y: 15
     kind: 4
-  - x: 43
-    y: 16
-    kind: 2
-  - x: 42
-    y: 18
-    kind: 2
-  - x: 43
-    y: 22
-    kind: 2
-  - x: 42
-    y: 22
-    kind: 2
-  - x: 42
-    y: 23
-    kind: 2
-  - x: 42
-    y: 24
-    kind: 2
-  - x: 41
-    y: 25
-    kind: 2
-  - x: 41
-    y: 26
-    kind: 2
-  - x: 41
-    y: 27
-    kind: 2
-  - x: 41
-    y: 23
-    kind: 2
-  - x: 41
-    y: 22
-    kind: 2
-  - x: 41
-    y: 18
-    kind: 2
-  - x: 41
-    y: 16
-    kind: 2
-  - x: 41
-    y: 15
-    kind: 2
   - x: 41
     y: 14
     kind: 2
   - x: 41
     y: 24
-    kind: 2
-  - x: 42
-    y: 25
-    kind: 2
-  - x: 42
-    y: 26
-    kind: 2
-  - x: 42
-    y: 27
-    kind: 2
-  - x: 43
-    y: 27
-    kind: 2
-  - x: 43
-    y: 26
-    kind: 2
-  - x: 43
-    y: 25
-    kind: 2
-  - x: 43
-    y: 24
-    kind: 2
-  - x: 43
-    y: 23
-    kind: 2
-  - x: 42
-    y: 16
-    kind: 2
-  - x: 42
-    y: 15
-    kind: 2
-  - x: 42
-    y: 14
     kind: 2
   - x: 41
     y: 32
@@ -1615,43 +1543,28 @@ MonoBehaviour:
   - x: 41
     y: 19
     kind: 2
-  - x: 43
-    y: 18
-    kind: 2
-  - x: 43
-    y: 19
-    kind: 2
-  - x: 43
-    y: 20
-    kind: 2
-  - x: 43
-    y: 21
-    kind: 2
-  - x: 42
-    y: 21
-    kind: 2
-  - x: 42
-    y: 20
-    kind: 2
-  - x: 42
-    y: 19
-    kind: 2
   - x: 41
     y: 17
     kind: 2
-  - x: 42
-    y: 17
+  - x: 58
+    y: 29
     kind: 2
-  - x: 43
-    y: 17
+  - x: 58
+    y: 28
+    kind: 2
+  - x: 58
+    y: 27
+    kind: 2
+  - x: 16
+    y: 26
+    kind: 2
+  - x: 17
+    y: 26
+    kind: 2
+  - x: 17
+    y: 25
     kind: 2
   props:
   - x: 41
-    y: 16
-    kind: 1
-  - x: 42
-    y: 16
-    kind: 1
-  - x: 43
     y: 16
     kind: 1
