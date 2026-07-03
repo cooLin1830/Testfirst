@@ -41,7 +41,7 @@ namespace DimensionShift.PetsLike
 
             if (isExit)
             {
-                player.MarkReachedExit();
+                player.MarkReachedExit(coord);
             }
         }
 

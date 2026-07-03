@@ -5,6 +5,7 @@ namespace DimensionShift.PetsLike
     public sealed class PetsHud : PetsPerspectiveListenerBehaviour
     {
         [SerializeField] private PetsLikePlayerController player;
+        [SerializeField] private bool showHud;
         [SerializeField] private int fontSize = 18;
         [SerializeField] private Color panelColor = new Color(0f, 0f, 0f, 0.62f);
         [SerializeField] private Color textColor = Color.white;
@@ -28,6 +29,11 @@ namespace DimensionShift.PetsLike
 
         private void OnGUI()
         {
+            if (!showHud)
+            {
+                return;
+            }
+
             if (labelStyle == null)
             {
                 labelStyle = new GUIStyle(GUI.skin.label)

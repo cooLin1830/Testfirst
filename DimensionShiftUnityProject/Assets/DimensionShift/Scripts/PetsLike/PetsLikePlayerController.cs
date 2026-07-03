@@ -17,7 +17,7 @@ namespace DimensionShift.PetsLike
         [Header("2D Movement")]
         [SerializeField] private float twoDMoveSpeed = 6f;
         [SerializeField] private float twoDAcceleration = 35f;
-        [SerializeField] private float twoDJumpVelocity = 7.25f;
+        [SerializeField] private float twoDJumpVelocity = 7.55f;
         [SerializeField] private float twoDJumpUpGravityScale = 1.25f;
         [SerializeField] private float twoDJumpDownGravityScale = 2.2f;
         [SerializeField] private float twoDWhiteStripClimbSpeed = 4.6f;
@@ -30,7 +30,7 @@ namespace DimensionShift.PetsLike
         [SerializeField] private float topDownDeceleration = 48f;
         [SerializeField] private float topDownInputDeadZone = 0.08f;
         [SerializeField] private float topDownGroundHeight = 0.55f;
-        [SerializeField] private float jumpArcHeight = 0.9f;
+        [SerializeField] private float jumpArcHeight = 1.05f;
         [SerializeField] private float jumpArcDuration = 0.28f;
 
         [Header("Input")]
@@ -263,16 +263,35 @@ namespace DimensionShift.PetsLike
 
         public void MarkReachedExit()
         {
-            if (level != null && level.CanReachExit(currentGridCoord))
+            if (level == null || reachedExit)
             {
-                reachedExit = true;
-                if (body != null)
-                {
-                    body.velocity = Vector3.zero;
-                }
-
-                global::DimensionShift.DimensionPrototypeBootstrap.TryCompleteActiveLevel();
+                return;
             }
+
+            PetsGridCoord exitCoord = ResolveRuleCoord();
+            if (!level.CanReachExit(exitCoord) && level.CanReachExit(currentGridCoord))
+            {
+                exitCoord = currentGridCoord;
+            }
+
+            MarkReachedExit(exitCoord);
+        }
+
+        public void MarkReachedExit(PetsGridCoord exitCoord)
+        {
+            if (level == null || reachedExit || !level.CanReachExit(exitCoord))
+            {
+                return;
+            }
+
+            currentGridCoord = exitCoord;
+            reachedExit = true;
+            if (body != null)
+            {
+                body.velocity = Vector3.zero;
+            }
+
+            global::DimensionShift.DimensionPrototypeBootstrap.TryCompleteActiveLevel();
         }
 
         private void TickTwoD()
@@ -381,6 +400,8 @@ namespace DimensionShift.PetsLike
                     RecordSafePosition();
                 }
             }
+
+            TryReachExitAtCurrentCoord();
 
             SetBlackRegionState(insideBlackRegion && !standingOnBlackTopEdge);
 
@@ -522,6 +543,7 @@ namespace DimensionShift.PetsLike
                 currentGridCoord = nextCoord;
                 topDownAnimatorVelocity = topDownMoveVelocity;
                 RecordSafePosition();
+                TryReachExitAtCurrentCoord();
             }
             else if (level.IsTopDownHole(nextCoord))
             {
@@ -659,7 +681,16 @@ namespace DimensionShift.PetsLike
             topDownMoveVelocity = Vector3.zero;
             topDownAnimatorVelocity = Vector3.zero;
             RecordSafePosition();
+            TryReachExitAtCurrentCoord();
             UpdateTwoDAnimator();
+        }
+
+        private void TryReachExitAtCurrentCoord()
+        {
+            if (level != null && !reachedExit && level.CanReachExit(currentGridCoord))
+            {
+                MarkReachedExit();
+            }
         }
 
         private void TrySwitchMode()
