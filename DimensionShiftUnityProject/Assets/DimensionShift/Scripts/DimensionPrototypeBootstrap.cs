@@ -65,9 +65,15 @@ namespace DimensionShift
 
         public bool TryLoadNextScene()
         {
-            if (!Application.isPlaying || !HasNextScene)
+            if (!Application.isPlaying)
             {
                 return false;
+            }
+
+            if (!HasNextScene)
+            {
+                PetsHud.ShowCompletionScreen();
+                return true;
             }
 
             if (isLoadingNextScene)

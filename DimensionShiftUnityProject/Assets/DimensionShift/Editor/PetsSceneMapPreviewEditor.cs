@@ -307,11 +307,6 @@ namespace DimensionShiftEditor
 
             if (hasStar)
             {
-                if (kind == PetsCellKind.Empty && marker == PetsCellKind.Empty && prop == PetsPropKind.None)
-                {
-                    Handles.DrawSolidRectangleWithOutline(CellCorners(center, size, -0.055f), preview.WhiteColor, Color.clear);
-                }
-
                 Vector3 starCenter = prop != PetsPropKind.None
                     ? center + new Vector3(cellSize * 0.27f, -cellSize * 0.27f, 0f)
                     : center;

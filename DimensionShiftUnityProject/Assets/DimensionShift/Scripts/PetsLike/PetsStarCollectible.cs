@@ -7,22 +7,33 @@ namespace DimensionShift.PetsLike
         [SerializeField] private GameObject twoDView;
         [SerializeField] private GameObject topDownView;
         [SerializeField] private BoxCollider trigger;
+        [SerializeField] private float coveredTwoDDepth = -0.28f;
+        [SerializeField] private float visibleTwoDDepth = -0.46f;
 
         private PetsLevelRuntime level;
         private PetsGridCoord coord;
         private bool collected;
+        private bool coveredInTwoD;
         private PetsPerspectiveMode currentMode;
         private float cellSize = 1f;
 
-        public void Configure(PetsLevelRuntime levelRuntime, PetsGridCoord gridCoord, GameObject twoDVisual, GameObject topDownVisual)
+        public void Configure(PetsLevelRuntime levelRuntime, PetsGridCoord gridCoord, GameObject twoDVisual, GameObject topDownVisual, float coveredDepth, float visibleDepth)
         {
             level = levelRuntime;
             coord = gridCoord;
             twoDView = twoDVisual;
             topDownView = topDownVisual;
+            coveredTwoDDepth = coveredDepth;
+            visibleTwoDDepth = visibleDepth;
             trigger = trigger != null ? trigger : GetComponent<BoxCollider>();
             cellSize = levelRuntime != null ? levelRuntime.CellSize : 1f;
             ApplyMode();
+        }
+
+        public void SetCoveredInTwoD(bool covered)
+        {
+            coveredInTwoD = covered;
+            ApplyTwoDVisualDepth();
         }
 
         public override void SetPerspectiveMode(PetsPerspectiveMode mode)
@@ -48,6 +59,7 @@ namespace DimensionShift.PetsLike
             if (twoDView != null)
             {
                 twoDView.SetActive(!collected && currentMode == PetsPerspectiveMode.TwoD);
+                ApplyTwoDVisualDepth();
             }
 
             if (topDownView != null)
@@ -81,6 +93,18 @@ namespace DimensionShift.PetsLike
                 : new Vector3(coord.x, 0.48f, coord.y);
             transform.rotation = Quaternion.identity;
             trigger.size = new Vector3(cellSize * 0.76f, cellSize * 0.78f, cellSize * 0.76f);
+        }
+
+        private void ApplyTwoDVisualDepth()
+        {
+            if (twoDView == null)
+            {
+                return;
+            }
+
+            Vector3 position = twoDView.transform.position;
+            position.z = coveredInTwoD ? coveredTwoDDepth : visibleTwoDDepth;
+            twoDView.transform.position = position;
         }
     }
 }

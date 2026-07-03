@@ -252,11 +252,6 @@ namespace DimensionShiftEditor
                 : new Rect(rect.x + rect.width * 0.31f, rect.y + rect.height * 0.31f, rect.width * 0.38f, rect.height * 0.38f);
             if (hasStar)
             {
-                if (kind == PetsCellKind.Empty && marker == PetsCellKind.Empty && prop == PetsPropKind.None)
-                {
-                    EditorGUI.DrawRect(fillRect, WhiteCellColor);
-                }
-
                 EditorGUI.DrawRect(starRect, StarColor);
                 if (prop == PetsPropKind.None)
                 {

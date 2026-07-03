@@ -27,6 +27,8 @@ namespace DimensionShift.PetsLike
         private const string TopDownBoxFbxPath = "Assets/Art/3D/boxfbx.fbx";
         private const float TwoDStarSpriteScale = 0.035f;
         private const float TwoDStarFallbackScale = 0.28f;
+        private const float TwoDStarCoveredDepth = -0.28f;
+        private const float TwoDStarVisibleDepth = -0.46f;
         private const float TopDownStarVisualDiameter = 0.68f;
         private const float TopDownStarGroundY = 0.1f;
         private const float Portal2DVisualScale = 0.045f;
@@ -51,6 +53,7 @@ namespace DimensionShift.PetsLike
         private readonly Dictionary<Vector2Int, PetsCellKind> twoPointFiveDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsPropKind> propCells = new Dictionary<Vector2Int, PetsPropKind>();
         private readonly HashSet<Vector2Int> starCells = new HashSet<Vector2Int>();
+        private readonly Dictionary<Vector2Int, PetsStarCollectible> starCollectibles = new Dictionary<Vector2Int, PetsStarCollectible>();
         private readonly Dictionary<Vector2Int, PetsCellKind> markerCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsSwitchTile> switchTiles = new Dictionary<Vector2Int, PetsSwitchTile>();
         private readonly Dictionary<Vector2Int, GameObject> topDownPlatforms = new Dictionary<Vector2Int, GameObject>();
@@ -83,6 +86,7 @@ namespace DimensionShift.PetsLike
             twoPointFiveDCells.Clear();
             propCells.Clear();
             starCells.Clear();
+            starCollectibles.Clear();
             markerCells.Clear();
             switchTiles.Clear();
             topDownPlatforms.Clear();
@@ -358,6 +362,20 @@ namespace DimensionShift.PetsLike
                 && !brick.IsBroken;
         }
 
+        private bool IsStarCoveredInTwoD(Vector2Int coord)
+        {
+            return pushBoxes.ContainsKey(coord)
+                || IsBreakableBrickBlocking(PetsGridCoord.FromVector2Int(coord));
+        }
+
+        private void RefreshStarCover(Vector2Int coord)
+        {
+            if (starCollectibles.TryGetValue(coord, out PetsStarCollectible star) && star != null)
+            {
+                star.SetCoveredInTwoD(IsStarCoveredInTwoD(coord));
+            }
+        }
+
         public bool TryPushBox(PetsGridCoord boxCoord, Vector2Int direction)
         {
             if (direction == Vector2Int.zero)
@@ -383,14 +401,19 @@ namespace DimensionShift.PetsLike
             }
 
             pushBoxes.Remove(boxKey);
-            pushBoxes[target.ToVector2Int()] = box;
+            Vector2Int targetKey = target.ToVector2Int();
+            pushBoxes[targetKey] = box;
             box.MoveTo(target);
+            RefreshStarCover(boxKey);
+            RefreshStarCover(targetKey);
             return true;
         }
 
         public void NotifyBrickBroken(PetsGridCoord coord)
         {
-            breakableBricks.Remove(coord.ToVector2Int());
+            Vector2Int key = coord.ToVector2Int();
+            breakableBricks.Remove(key);
+            RefreshStarCover(key);
         }
 
         public bool TryBreakFootLandingBrickNear(Bounds bounds)
@@ -787,7 +810,7 @@ namespace DimensionShift.PetsLike
             root.transform.position = Vector3.zero;
 
             Material material = GetStarMaterial();
-            float twoDStarZ = propCells.ContainsKey(coord) ? -0.28f : -0.34f;
+            float twoDStarZ = IsStarCoveredInTwoD(coord) ? TwoDStarCoveredDepth : TwoDStarVisibleDepth;
             GameObject twoDView = CreateTwoDStarView(
                 "2D Star",
                 root.transform,
@@ -812,7 +835,9 @@ namespace DimensionShift.PetsLike
             trigger.isTrigger = true;
 
             PetsStarCollectible star = triggerObject.AddComponent<PetsStarCollectible>();
-            star.Configure(this, PetsGridCoord.FromVector2Int(coord), twoDView, topDownView);
+            star.Configure(this, PetsGridCoord.FromVector2Int(coord), twoDView, topDownView, TwoDStarCoveredDepth, TwoDStarVisibleDepth);
+            starCollectibles[coord] = star;
+            RefreshStarCover(coord);
             sharedObjects.Add(root);
         }
 

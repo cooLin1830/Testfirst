@@ -86,12 +86,10 @@ namespace DimensionShift.PetsLike
                 if (propKind == PetsPropKind.Star)
                 {
                     SetStar(x, y, true);
-                }
-                else
-                {
-                    SetProp(x, y, propKind);
+                    return;
                 }
 
+                SetProp(x, y, propKind);
                 if (GetCell(x, y) == PetsCellKind.Empty)
                 {
                     SetCell(x, y, PetsCellKind.WhiteInterior);
@@ -297,10 +295,6 @@ namespace DimensionShift.PetsLike
                 else if (cell.kind == PetsCellKind.Star)
                 {
                     definition.SetStar(cell.x, cell.y, true);
-                    if (definition.GetCell(cell.x, cell.y) == PetsCellKind.Empty)
-                    {
-                        definition.SetCell(cell.x, cell.y, PetsCellKind.WhiteInterior);
-                    }
                 }
                 else
                 {
@@ -319,6 +313,7 @@ namespace DimensionShift.PetsLike
                 if (prop.kind == PetsPropKind.Star)
                 {
                     definition.SetStar(prop.x, prop.y, true);
+                    continue;
                 }
                 else
                 {
@@ -340,10 +335,6 @@ namespace DimensionShift.PetsLike
                 }
 
                 definition.SetStar(star.x, star.y, true);
-                if (definition.GetCell(star.x, star.y) == PetsCellKind.Empty)
-                {
-                    definition.SetCell(star.x, star.y, PetsCellKind.WhiteInterior);
-                }
             }
 
             for (int i = 0; i < markers.Count; i++)
@@ -420,12 +411,7 @@ namespace DimensionShift.PetsLike
             int cellIndex = IndexOf(x, y);
             if (cellIndex >= 0 && cells[cellIndex].kind == PetsCellKind.Star)
             {
-                cells[cellIndex] = new PetsEditableCell(x, y, PetsCellKind.WhiteInterior);
-            }
-
-            if (GetCell(x, y) == PetsCellKind.Empty)
-            {
-                SetCell(x, y, PetsCellKind.WhiteInterior);
+                cells.RemoveAt(cellIndex);
             }
         }
 
@@ -446,7 +432,7 @@ namespace DimensionShift.PetsLike
             int cellIndex = IndexOf(x, y);
             if (cellIndex >= 0 && cells[cellIndex].kind == PetsCellKind.Star)
             {
-                cells[cellIndex] = new PetsEditableCell(x, y, PetsCellKind.WhiteInterior);
+                cells.RemoveAt(cellIndex);
             }
         }
 

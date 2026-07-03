@@ -269,7 +269,7 @@ namespace DimensionShift.PetsLike
             }
 
             PetsGridCoord exitCoord = ResolveRuleCoord();
-            if (!level.CanReachExit(exitCoord) && level.CanReachExit(currentGridCoord))
+            if (!level.IsExit(exitCoord) && level.IsExit(currentGridCoord))
             {
                 exitCoord = currentGridCoord;
             }
@@ -279,8 +279,14 @@ namespace DimensionShift.PetsLike
 
         public void MarkReachedExit(PetsGridCoord exitCoord)
         {
-            if (level == null || reachedExit || !level.CanReachExit(exitCoord))
+            if (level == null || reachedExit || !level.IsExit(exitCoord))
             {
+                return;
+            }
+
+            if (!level.HasCollectedAllStars)
+            {
+                PetsHud.ShowMissingStars(level.CollectedStars, level.TotalStars);
                 return;
             }
 
@@ -687,9 +693,9 @@ namespace DimensionShift.PetsLike
 
         private void TryReachExitAtCurrentCoord()
         {
-            if (level != null && !reachedExit && level.CanReachExit(currentGridCoord))
+            if (level != null && !reachedExit && level.IsExit(currentGridCoord))
             {
-                MarkReachedExit();
+                MarkReachedExit(currentGridCoord);
             }
         }
 

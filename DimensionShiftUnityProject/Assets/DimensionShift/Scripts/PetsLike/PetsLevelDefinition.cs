@@ -45,12 +45,10 @@ namespace DimensionShift.PetsLike
                 if (propKind == PetsPropKind.Star)
                 {
                     SetStar(x, y, true);
-                }
-                else
-                {
-                    SetProp(x, y, propKind);
+                    return;
                 }
 
+                SetProp(x, y, propKind);
                 EnsureTerrainForProp(twoDCells, x, y);
                 if (!hasTwoPointFiveDOverride)
                 {
@@ -87,12 +85,10 @@ namespace DimensionShift.PetsLike
                 if (propKind == PetsPropKind.Star)
                 {
                     SetStar(x, y, true);
-                }
-                else
-                {
-                    SetProp(x, y, propKind);
+                    return;
                 }
 
+                SetProp(x, y, propKind);
                 if (mode == PetsPerspectiveMode.TwoPointFiveD)
                 {
                     EnsureTwoPointFiveDOverride();
@@ -172,8 +168,6 @@ namespace DimensionShift.PetsLike
             }
 
             stars.Add(coord);
-            EnsureTerrainForProp(twoDCells, x, y);
-            EnsureTerrainForProp(twoPointFiveDCells, x, y);
         }
 
         public void FillRect(RectInt rect, PetsCellKind kind)
