@@ -357,7 +357,7 @@ MonoBehaviour:
     kind: 3
   - x: 24
     y: 33
-    kind: 3
+    kind: 9
   - x: 22
     y: 33
     kind: 3
@@ -522,10 +522,10 @@ MonoBehaviour:
     kind: 2
   - x: 26
     y: 37
-    kind: 2
+    kind: 5
   - x: 27
     y: 37
-    kind: 5
+    kind: 2
   - x: 28
     y: 37
     kind: 2
