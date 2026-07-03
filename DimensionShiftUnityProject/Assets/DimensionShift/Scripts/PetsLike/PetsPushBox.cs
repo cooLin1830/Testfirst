@@ -25,8 +25,10 @@ namespace DimensionShift.PetsLike
             topDownCollider = topDownView != null ? topDownView.GetComponent<Collider>() : null;
             if (topDownBody != null)
             {
-                topDownBody.interpolation = RigidbodyInterpolation.Interpolate;
-                topDownBody.collisionDetectionMode = CollisionDetectionMode.Continuous;
+                topDownBody.isKinematic = true;
+                topDownBody.useGravity = false;
+                topDownBody.interpolation = RigidbodyInterpolation.None;
+                topDownBody.collisionDetectionMode = CollisionDetectionMode.Discrete;
                 topDownBody.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
             }
 
@@ -59,23 +61,6 @@ namespace DimensionShift.PetsLike
             }
         }
 
-        protected override void OnEnable()
-        {
-            base.OnEnable();
-        }
-
-        private void FixedUpdate()
-        {
-            if (PetsModeManager.Instance == null || !PetsModeManager.Instance.IsTwoPointFiveD || level == null || topDownBody == null)
-            {
-                return;
-            }
-
-            Vector3 position = topDownBody.position;
-            position.y = 0.42f;
-            topDownBody.position = position;
-        }
-
         public override void SetPerspectiveMode(PetsPerspectiveMode mode)
         {
             bool inTwoD = mode == PetsPerspectiveMode.TwoD;
@@ -101,10 +86,12 @@ namespace DimensionShift.PetsLike
 
             if (topDownBody != null)
             {
-                topDownBody.isKinematic = inTwoD;
+                topDownBody.isKinematic = true;
                 topDownBody.useGravity = false;
                 topDownBody.velocity = Vector3.zero;
                 topDownBody.angularVelocity = Vector3.zero;
+                topDownBody.interpolation = RigidbodyInterpolation.None;
+                topDownBody.collisionDetectionMode = CollisionDetectionMode.Discrete;
                 topDownBody.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
             }
         }

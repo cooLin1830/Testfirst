@@ -10,10 +10,29 @@ namespace DimensionShift.PetsLike
     public sealed class PetsLevelRuntime : PetsPerspectiveListenerBehaviour
     {
         private const string StarFbxPath = "Assets/Art/3D/star.fbx";
+        private const string Star2DVisualPrefabPath = "Assets/Art/2d/star/Star2DVisual.prefab";
+        private const string Star2DFrame1Path = "Assets/Art/2d/star/star1.png";
+        private const string Star2DFrame2Path = "Assets/Art/2d/star/satr2.png";
+        private const string Star2DFrame3Path = "Assets/Art/2d/star/star3.png";
+        private const string Portal2DVisualPrefabPath = "Assets/Art/2d/item/Portal2DVisual.prefab";
+        private const string Portal2DFrame1Path = "Assets/Art/2d/item/portal1.png";
+        private const string Portal2DFrame2Path = "Assets/Art/2d/item/portal2.png";
+        private const string Portal2DFrame3Path = "Assets/Art/2d/item/portal3.png";
+        private const string Portal2DFrame4Path = "Assets/Art/2d/item/portal4.png";
+        private const string Switch2DIconPath = "Assets/Art/2d/item/2D.png";
+        private const string Switch25DIconPath = "Assets/Art/2d/item/3D.png";
         private const string TwoDBrickSpritePath = "Assets/Art/3D/brick.png";
         private const string TwoDBoxSpritePath = "Assets/Art/3D/box.png";
         private const string TopDownBrickFbxPath = "Assets/Art/3D/brick.fbx";
         private const string TopDownBoxFbxPath = "Assets/Art/3D/boxfbx.fbx";
+        private const float TwoDStarSpriteScale = 0.035f;
+        private const float TwoDStarFallbackScale = 0.28f;
+        private const float TopDownStarVisualDiameter = 0.68f;
+        private const float TopDownStarGroundY = 0.1f;
+        private const float Portal2DVisualScale = 0.045f;
+        private const float Portal2DVerticalOffset = 0.16f;
+        private const float Portal2DDepth = -0.36f;
+        private const float SwitchIconWorldSize = 0.62f;
 
         [SerializeField] private float cellSize = 1f;
         [SerializeField] private float twoDLineThickness = 0.18f;
@@ -31,6 +50,7 @@ namespace DimensionShift.PetsLike
         private readonly Dictionary<Vector2Int, PetsCellKind> twoDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsCellKind> twoPointFiveDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsPropKind> propCells = new Dictionary<Vector2Int, PetsPropKind>();
+        private readonly HashSet<Vector2Int> starCells = new HashSet<Vector2Int>();
         private readonly Dictionary<Vector2Int, PetsCellKind> markerCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsSwitchTile> switchTiles = new Dictionary<Vector2Int, PetsSwitchTile>();
         private readonly Dictionary<Vector2Int, GameObject> topDownPlatforms = new Dictionary<Vector2Int, GameObject>();
@@ -62,6 +82,7 @@ namespace DimensionShift.PetsLike
             twoDCells.Clear();
             twoPointFiveDCells.Clear();
             propCells.Clear();
+            starCells.Clear();
             markerCells.Clear();
             switchTiles.Clear();
             topDownPlatforms.Clear();
@@ -89,7 +110,19 @@ namespace DimensionShift.PetsLike
 
             foreach (KeyValuePair<Vector2Int, PetsPropKind> prop in definition.Props)
             {
-                propCells[prop.Key] = prop.Value;
+                if (prop.Value == PetsPropKind.Star)
+                {
+                    starCells.Add(prop.Key);
+                }
+                else
+                {
+                    propCells[prop.Key] = prop.Value;
+                }
+            }
+
+            foreach (Vector2Int star in definition.Stars)
+            {
+                starCells.Add(star);
             }
 
             foreach (KeyValuePair<Vector2Int, PetsCellKind> marker in definition.Markers)
@@ -111,6 +144,13 @@ namespace DimensionShift.PetsLike
             {
                 BuildProp(prop.Key, prop.Value, brickMaterial, boxMaterial);
             }
+
+            foreach (Vector2Int star in starCells)
+            {
+                BuildStar(star);
+            }
+
+            BuildSpawnPortal(definition.Spawn.ToVector2Int());
 
             BuildBlackRegionFills(twoDCells, PetsPerspectiveMode.TwoD, blackMaterial);
             BuildBlackRegionFills(twoPointFiveDCells, PetsPerspectiveMode.TwoPointFiveD, blackMaterial);
@@ -283,7 +323,7 @@ namespace DimensionShift.PetsLike
 
         public void NotifyStarCollected(PetsGridCoord coord)
         {
-            if (!propCells.TryGetValue(coord.ToVector2Int(), out PetsPropKind kind) || kind != PetsPropKind.Star)
+            if (!starCells.Contains(coord.ToVector2Int()))
             {
                 return;
             }
@@ -640,7 +680,6 @@ namespace DimensionShift.PetsLike
                     BuildPushBox(coord, boxMaterial);
                     break;
                 case PetsPropKind.Star:
-                    BuildStar(coord);
                     break;
             }
         }
@@ -748,20 +787,22 @@ namespace DimensionShift.PetsLike
             root.transform.position = Vector3.zero;
 
             Material material = GetStarMaterial();
-            GameObject twoDView = CreateStarView(
+            float twoDStarZ = propCells.ContainsKey(coord) ? -0.28f : -0.34f;
+            GameObject twoDView = CreateTwoDStarView(
                 "2D Star",
                 root.transform,
-                new Vector3(coord.x * cellSize, coord.y * cellSize + cellSize * 0.14f, -0.34f),
+                new Vector3(coord.x * cellSize, coord.y * cellSize + cellSize * 0.14f, twoDStarZ),
                 Quaternion.identity,
-                Vector3.one * (cellSize * 0.34f),
+                Vector3.one * (cellSize * TwoDStarSpriteScale),
+                Vector3.one * (cellSize * TwoDStarFallbackScale),
                 material);
 
-            GameObject topDownView = CreateStarView(
+            GameObject topDownView = CreateTopDownStarView(
                 "2.5D Star",
                 root.transform,
-                new Vector3(coord.x * cellSize, 0.58f, coord.y * cellSize),
+                new Vector3(coord.x * cellSize, TopDownStarGroundY, coord.y * cellSize),
                 Quaternion.Euler(0f, 20f, 0f),
-                Vector3.one * (cellSize * 0.32f),
+                Vector3.one * (cellSize * 0.42f),
                 material);
 
             GameObject triggerObject = new GameObject("Star Trigger");
@@ -775,7 +816,44 @@ namespace DimensionShift.PetsLike
             sharedObjects.Add(root);
         }
 
-        private GameObject CreateStarView(string name, Transform parent, Vector3 position, Quaternion rotation, Vector3 scale, Material material)
+        private void BuildSpawnPortal(Vector2Int coord)
+        {
+            GameObject root = new GameObject($"Spawn Portal {coord.x},{coord.y}");
+            root.transform.SetParent(twoDRoot);
+            root.transform.position = new Vector3(
+                coord.x * cellSize,
+                coord.y * cellSize + cellSize * Portal2DVerticalOffset,
+                Portal2DDepth);
+
+            if (!TryCreatePortalVisual(root.transform, "Portal", Vector3.zero, Quaternion.identity, 18))
+            {
+                CreateMarkerLabel(root.transform, "START", 0.12f);
+            }
+
+            twoDObjects.Add(root);
+        }
+
+        private GameObject CreateTwoDStarView(string name, Transform parent, Vector3 position, Quaternion rotation, Vector3 spriteScale, Vector3 fallbackScale, Material material)
+        {
+#if UNITY_EDITOR
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Star2DVisualPrefabPath);
+            if (prefab != null)
+            {
+                GameObject instance = Object.Instantiate(prefab, parent);
+                instance.name = name;
+                instance.transform.position = position;
+                instance.transform.rotation = rotation;
+                instance.transform.localScale = spriteScale;
+                RemoveGeneratedColliders(instance);
+                ConfigureTwoDStarAnimation(instance);
+                return instance;
+            }
+#endif
+
+            return CreateFallbackStarView(name, parent, position, rotation, fallbackScale, material);
+        }
+
+        private GameObject CreateTopDownStarView(string name, Transform parent, Vector3 position, Quaternion rotation, Vector3 scale, Material material)
         {
 #if UNITY_EDITOR
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(StarFbxPath);
@@ -787,10 +865,55 @@ namespace DimensionShift.PetsLike
                 instance.transform.rotation = rotation;
                 instance.transform.localScale = scale;
                 RemoveGeneratedColliders(instance);
+                ApplyMaterialToRenderers(instance, material);
+                FitRenderedBounds(instance, cellSize * TopDownStarVisualDiameter);
+                PlaceRenderedBoundsOnGround(instance, position);
                 return instance;
             }
 #endif
 
+            return CreateFallbackStarView(name, parent, position, rotation, scale, material);
+        }
+
+#if UNITY_EDITOR
+        private static void ConfigureTwoDStarAnimation(GameObject instance)
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            SpriteRenderer spriteRenderer = instance.GetComponent<SpriteRenderer>();
+            if (spriteRenderer == null)
+            {
+                spriteRenderer = instance.GetComponentInChildren<SpriteRenderer>(true);
+            }
+
+            if (spriteRenderer == null)
+            {
+                return;
+            }
+
+            Sprite frame1 = AssetDatabase.LoadAssetAtPath<Sprite>(Star2DFrame1Path);
+            Sprite frame2 = AssetDatabase.LoadAssetAtPath<Sprite>(Star2DFrame2Path);
+            Sprite frame3 = AssetDatabase.LoadAssetAtPath<Sprite>(Star2DFrame3Path);
+            if (frame1 == null || frame2 == null || frame3 == null)
+            {
+                return;
+            }
+
+            PetsSpriteFrameAnimator frameAnimator = instance.GetComponent<PetsSpriteFrameAnimator>();
+            if (frameAnimator == null)
+            {
+                frameAnimator = instance.AddComponent<PetsSpriteFrameAnimator>();
+            }
+
+            frameAnimator.Configure(spriteRenderer, new[] { frame1, frame2, frame3 }, 6f);
+        }
+#endif
+
+        private GameObject CreateFallbackStarView(string name, Transform parent, Vector3 position, Quaternion rotation, Vector3 scale, Material material)
+        {
             GameObject fallback = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             fallback.name = name;
             fallback.transform.SetParent(parent);
@@ -805,6 +928,78 @@ namespace DimensionShift.PetsLike
 
             RemoveGeneratedCollider(fallback.GetComponent<Collider>());
             return fallback;
+        }
+
+        private static void ApplyMaterialToRenderers(GameObject root, Material material)
+        {
+            if (root == null || material == null)
+            {
+                return;
+            }
+
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] != null)
+                {
+                    renderers[i].gameObject.SetActive(true);
+                    renderers[i].sharedMaterial = material;
+                    renderers[i].enabled = true;
+                }
+            }
+        }
+
+        private static void FitRenderedBounds(GameObject root, float targetDiameter)
+        {
+            if (root == null || targetDiameter <= 0f || !TryGetRenderedBounds(root, out Bounds bounds))
+            {
+                return;
+            }
+
+            float currentDiameter = Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z));
+            if (currentDiameter <= 0.0001f)
+            {
+                return;
+            }
+
+            root.transform.localScale *= targetDiameter / currentDiameter;
+        }
+
+        private static void PlaceRenderedBoundsOnGround(GameObject root, Vector3 groundPosition)
+        {
+            if (root == null || !TryGetRenderedBounds(root, out Bounds bounds))
+            {
+                return;
+            }
+
+            Vector3 anchor = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+            root.transform.position += groundPosition - anchor;
+        }
+
+        private static bool TryGetRenderedBounds(GameObject root, out Bounds bounds)
+        {
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            bounds = default;
+            bool hasBounds = false;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = renderer.bounds;
+                    hasBounds = true;
+                    continue;
+                }
+
+                bounds.Encapsulate(renderer.bounds);
+            }
+
+            return hasBounds;
         }
 
         private Material GetStarMaterial()
@@ -828,6 +1023,8 @@ namespace DimensionShift.PetsLike
             if (shader.name == "Standard")
             {
                 starMaterial.SetFloat("_Glossiness", 0.2f);
+                starMaterial.EnableKeyword("_EMISSION");
+                starMaterial.SetColor("_EmissionColor", starColor * 0.18f);
             }
 
             return starMaterial;
@@ -1106,18 +1303,126 @@ namespace DimensionShift.PetsLike
                 switchTile.ConfigureAsExit(this, PetsGridCoord.FromVector2Int(coord));
             }
 
-            TextMesh label = new GameObject("Label").AddComponent<TextMesh>();
-            label.transform.SetParent(marker.transform);
-            label.transform.localPosition = new Vector3(0f, 0.09f, -0.05f);
-            label.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            label.text = kind == PetsCellKind.SwitchTo2D ? "2D" : kind == PetsCellKind.SwitchToTwoPointFiveD ? "2.5D" : "EXIT";
-            label.anchor = TextAnchor.MiddleCenter;
-            label.alignment = TextAlignment.Center;
-            label.characterSize = kind == PetsCellKind.SwitchToTwoPointFiveD ? 0.1f : kind == PetsCellKind.Exit ? 0.14f : 0.18f;
-            label.fontSize = 48;
-            label.color = Color.black;
+            if (kind == PetsCellKind.SwitchTo2D || kind == PetsCellKind.SwitchToTwoPointFiveD)
+            {
+                string iconPath = kind == PetsCellKind.SwitchTo2D ? Switch2DIconPath : Switch25DIconPath;
+                if (!TryCreateSwitchIcon(marker.transform, iconPath))
+                {
+                    CreateMarkerLabel(marker.transform, kind == PetsCellKind.SwitchTo2D ? "2D" : "2.5D", 0.14f);
+                }
+            }
+            else
+            {
+                if (!TryCreatePortalVisual(marker.transform, "Portal", new Vector3(0f, 0.1f, -0.05f), Quaternion.identity, 22))
+                {
+                    CreateMarkerLabel(marker.transform, "EXIT", 0.14f);
+                }
+            }
 
             return marker;
+        }
+
+        private bool TryCreatePortalVisual(Transform parent, string name, Vector3 localPosition, Quaternion localRotation, int sortingOrder)
+        {
+#if UNITY_EDITOR
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Portal2DVisualPrefabPath);
+            if (prefab == null)
+            {
+                return false;
+            }
+
+            GameObject instance = Object.Instantiate(prefab, parent);
+            instance.name = name;
+            instance.transform.localPosition = localPosition;
+            instance.transform.localRotation = localRotation;
+            instance.transform.localScale = Vector3.one * (cellSize * Portal2DVisualScale);
+            ConfigurePortalAnimation(instance, sortingOrder);
+            return true;
+#else
+            return false;
+#endif
+        }
+
+#if UNITY_EDITOR
+        private static void ConfigurePortalAnimation(GameObject instance, int sortingOrder)
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            SpriteRenderer spriteRenderer = instance.GetComponent<SpriteRenderer>();
+            if (spriteRenderer == null)
+            {
+                spriteRenderer = instance.GetComponentInChildren<SpriteRenderer>(true);
+            }
+
+            if (spriteRenderer == null)
+            {
+                return;
+            }
+
+            spriteRenderer.sortingOrder = sortingOrder;
+            Sprite frame1 = AssetDatabase.LoadAssetAtPath<Sprite>(Portal2DFrame1Path);
+            Sprite frame2 = AssetDatabase.LoadAssetAtPath<Sprite>(Portal2DFrame2Path);
+            Sprite frame3 = AssetDatabase.LoadAssetAtPath<Sprite>(Portal2DFrame3Path);
+            Sprite frame4 = AssetDatabase.LoadAssetAtPath<Sprite>(Portal2DFrame4Path);
+            if (frame1 == null || frame2 == null || frame3 == null || frame4 == null)
+            {
+                return;
+            }
+
+            PetsSpriteFrameAnimator frameAnimator = instance.GetComponent<PetsSpriteFrameAnimator>();
+            if (frameAnimator == null)
+            {
+                frameAnimator = instance.AddComponent<PetsSpriteFrameAnimator>();
+            }
+
+            frameAnimator.Configure(spriteRenderer, new[] { frame1, frame2, frame3, frame4 }, 5f);
+        }
+#endif
+
+        private bool TryCreateSwitchIcon(Transform parent, string spritePath)
+        {
+#if UNITY_EDITOR
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+            if (sprite == null)
+            {
+                return false;
+            }
+
+            GameObject icon = new GameObject("Icon");
+            icon.transform.SetParent(parent);
+            icon.transform.localPosition = new Vector3(0f, 0.1f, -0.05f);
+            icon.transform.localRotation = Quaternion.identity;
+
+            SpriteRenderer spriteRenderer = icon.AddComponent<SpriteRenderer>();
+            spriteRenderer.sprite = sprite;
+            spriteRenderer.sortingOrder = 24;
+
+            Vector2 spriteWorldSize = sprite.bounds.size;
+            float largestSide = Mathf.Max(spriteWorldSize.x, spriteWorldSize.y);
+            float scale = SwitchIconWorldSize / Mathf.Max(0.001f, largestSide);
+            icon.transform.localScale = Vector3.one * scale;
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        private static TextMesh CreateMarkerLabel(Transform parent, string text, float characterSize)
+        {
+            TextMesh label = new GameObject("Label").AddComponent<TextMesh>();
+            label.transform.SetParent(parent);
+            label.transform.localPosition = new Vector3(0f, 0.09f, -0.05f);
+            label.transform.localRotation = Quaternion.identity;
+            label.text = text;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.characterSize = characterSize;
+            label.fontSize = 48;
+            label.color = Color.black;
+            return label;
         }
 
         private static bool IsMarkerKind(PetsCellKind kind)
@@ -1184,6 +1489,17 @@ namespace DimensionShift.PetsLike
                         ? new Vector3(0f, 0.1f, -0.05f)
                         : new Vector3(0f, 0.16f, -0.09f);
                     label.transform.localRotation = currentMode == PetsPerspectiveMode.TwoD
+                        ? Quaternion.identity
+                        : Quaternion.Euler(60f, 0f, 0f);
+                }
+
+                SpriteRenderer icon = sharedObject.GetComponentInChildren<SpriteRenderer>();
+                if (icon != null)
+                {
+                    icon.transform.localPosition = currentMode == PetsPerspectiveMode.TwoD
+                        ? new Vector3(0f, 0.1f, -0.05f)
+                        : new Vector3(0f, 0.155f, -0.04f);
+                    icon.transform.localRotation = currentMode == PetsPerspectiveMode.TwoD
                         ? Quaternion.identity
                         : Quaternion.Euler(60f, 0f, 0f);
                 }

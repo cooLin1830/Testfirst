@@ -127,7 +127,8 @@ namespace DimensionShiftEditor
                         PetsCellKind kind = level.GetCell(x, y);
                         PetsCellKind marker = level.GetMarker(x, y);
                         PetsPropKind prop = level.GetProp(x, y);
-                        DrawCell(preview, origin, cellSize, x, y, kind, marker, prop);
+                        bool hasStar = level.HasStar(x, y);
+                        DrawCell(preview, origin, cellSize, x, y, kind, marker, prop, hasStar);
                     }
                 }
 
@@ -140,7 +141,7 @@ namespace DimensionShiftEditor
             }
         }
 
-        private static void DrawCell(PetsSceneMapPreview preview, Vector3 origin, float cellSize, int x, int y, PetsCellKind kind, PetsCellKind marker, PetsPropKind prop)
+        private static void DrawCell(PetsSceneMapPreview preview, Vector3 origin, float cellSize, int x, int y, PetsCellKind kind, PetsCellKind marker, PetsPropKind prop, bool hasStar)
         {
             Vector3 center = origin + new Vector3(x * cellSize, y * cellSize, 0f);
             Color color = kind == PetsCellKind.Empty ? preview.EmptyColor : ColorFor(preview, kind);
@@ -166,12 +167,31 @@ namespace DimensionShiftEditor
                 Handles.DrawSolidRectangleWithOutline(CellCorners(center, Vector3.one * cellSize * 0.52f, -0.065f), ColorFor(preview, prop), Color.clear);
             }
 
+            if (hasStar)
+            {
+                if (kind == PetsCellKind.Empty && marker == PetsCellKind.Empty && prop == PetsPropKind.None)
+                {
+                    Handles.DrawSolidRectangleWithOutline(CellCorners(center, size, -0.055f), preview.WhiteColor, Color.clear);
+                }
+
+                Vector3 starCenter = prop != PetsPropKind.None
+                    ? center + new Vector3(cellSize * 0.27f, -cellSize * 0.27f, 0f)
+                    : center;
+                float starSize = prop != PetsPropKind.None ? 0.24f : 0.38f;
+                Handles.DrawSolidRectangleWithOutline(CellCorners(starCenter, Vector3.one * cellSize * starSize, -0.075f), preview.StarColor, Color.clear);
+            }
+
             if (preview.ShowLabels)
             {
-                string label = prop != PetsPropKind.None ? LabelFor(prop) : marker != PetsCellKind.Empty ? LabelFor(marker) : LabelFor(kind);
+                string label = prop != PetsPropKind.None ? LabelFor(prop) : hasStar ? "*" : marker != PetsCellKind.Empty ? LabelFor(marker) : LabelFor(kind);
                 if (!string.IsNullOrEmpty(label))
                 {
                     DrawLabel(center + Vector3.forward * -0.08f, label, kind == PetsCellKind.BlackRegion && marker == PetsCellKind.Empty ? Color.white : Color.black);
+                }
+
+                if (hasStar && prop != PetsPropKind.None)
+                {
+                    DrawLabel(center + new Vector3(cellSize * 0.27f, -cellSize * 0.27f, -0.09f), "*", Color.black);
                 }
             }
         }
@@ -368,6 +388,13 @@ namespace DimensionShiftEditor
             {
                 level.SetCell(x, y, PetsCellKind.Empty);
                 level.SetProp(x, y, PetsPropKind.None);
+                level.SetStar(x, y, false);
+                return;
+            }
+
+            if (brush == PetsCellKind.Star)
+            {
+                level.SetStar(x, y, true);
                 return;
             }
 
@@ -403,9 +430,6 @@ namespace DimensionShiftEditor
                     return true;
                 case PetsCellKind.HeadBreakBox:
                     prop = PetsPropKind.HeadBreakBox;
-                    return true;
-                case PetsCellKind.Star:
-                    prop = PetsPropKind.Star;
                     return true;
                 default:
                     prop = PetsPropKind.None;

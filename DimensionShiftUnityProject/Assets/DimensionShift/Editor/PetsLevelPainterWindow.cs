@@ -187,7 +187,8 @@ namespace DimensionShiftEditor
                         PetsCellKind kind = levelAsset.GetCell(x, y);
                         PetsCellKind marker = levelAsset.GetMarker(x, y);
                         PetsPropKind prop = levelAsset.GetProp(x, y);
-                        DrawCell(cellRect, kind, marker, prop);
+                        bool hasStar = levelAsset.HasStar(x, y);
+                        DrawCell(cellRect, kind, marker, prop, hasStar);
                         Handles.color = GridColor;
                         Handles.DrawAAPolyLine(1f,
                             new Vector3(cellRect.xMin, cellRect.yMin),
@@ -213,9 +214,9 @@ namespace DimensionShiftEditor
             return new Rect(canvas.x + x * CellPixels, canvas.y + drawY * CellPixels, CellPixels, CellPixels);
         }
 
-        private void DrawCell(Rect rect, PetsCellKind kind, PetsCellKind marker, PetsPropKind prop)
+        private void DrawCell(Rect rect, PetsCellKind kind, PetsCellKind marker, PetsPropKind prop, bool hasStar)
         {
-            if (kind == PetsCellKind.Empty && marker == PetsCellKind.Empty && prop == PetsPropKind.None)
+            if (kind == PetsCellKind.Empty && marker == PetsCellKind.Empty && prop == PetsPropKind.None && !hasStar)
             {
                 return;
             }
@@ -246,7 +247,24 @@ namespace DimensionShiftEditor
                 labelRect = propRect;
             }
 
-            string label = prop != PetsPropKind.None ? LabelFor(prop) : marker != PetsCellKind.Empty ? LabelFor(marker) : LabelFor(kind);
+            Rect starRect = prop != PetsPropKind.None
+                ? new Rect(rect.x + rect.width * 0.62f, rect.y + rect.height * 0.62f, rect.width * 0.26f, rect.height * 0.26f)
+                : new Rect(rect.x + rect.width * 0.31f, rect.y + rect.height * 0.31f, rect.width * 0.38f, rect.height * 0.38f);
+            if (hasStar)
+            {
+                if (kind == PetsCellKind.Empty && marker == PetsCellKind.Empty && prop == PetsPropKind.None)
+                {
+                    EditorGUI.DrawRect(fillRect, WhiteCellColor);
+                }
+
+                EditorGUI.DrawRect(starRect, StarColor);
+                if (prop == PetsPropKind.None)
+                {
+                    labelRect = starRect;
+                }
+            }
+
+            string label = prop != PetsPropKind.None ? LabelFor(prop) : hasStar ? "*" : marker != PetsCellKind.Empty ? LabelFor(marker) : LabelFor(kind);
             if (!string.IsNullOrEmpty(label))
             {
                 GUIStyle style = new GUIStyle(EditorStyles.boldLabel)
@@ -256,6 +274,17 @@ namespace DimensionShiftEditor
                     fontSize = prop == PetsPropKind.PushBox || prop == PetsPropKind.HeadBreakBox ? 8 : 10
                 };
                 GUI.Label(labelRect, label, style);
+            }
+
+            if (hasStar && prop != PetsPropKind.None)
+            {
+                GUIStyle starStyle = new GUIStyle(EditorStyles.boldLabel)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = Color.black },
+                    fontSize = 9
+                };
+                GUI.Label(starRect, "*", starStyle);
             }
         }
 
@@ -537,6 +566,13 @@ namespace DimensionShiftEditor
             {
                 levelAsset.SetCell(x, y, PetsCellKind.Empty);
                 levelAsset.SetProp(x, y, PetsPropKind.None);
+                levelAsset.SetStar(x, y, false);
+                return;
+            }
+
+            if (brush == PetsCellKind.Star)
+            {
+                levelAsset.SetStar(x, y, true);
                 return;
             }
 
@@ -572,9 +608,6 @@ namespace DimensionShiftEditor
                     return true;
                 case PetsCellKind.HeadBreakBox:
                     prop = PetsPropKind.HeadBreakBox;
-                    return true;
-                case PetsCellKind.Star:
-                    prop = PetsPropKind.Star;
                     return true;
                 default:
                     prop = PetsPropKind.None;

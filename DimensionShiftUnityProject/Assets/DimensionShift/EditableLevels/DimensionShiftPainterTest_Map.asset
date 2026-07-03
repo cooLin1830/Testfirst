@@ -80,9 +80,6 @@ MonoBehaviour:
     y: 5
     kind: 2
   - x: 4
-    y: 5
-    kind: 2
-  - x: 4
     y: 4
     kind: 2
   - x: 5
@@ -202,6 +199,9 @@ MonoBehaviour:
   - x: 14
     y: 8
     kind: 2
+  - x: 4
+    y: 5
+    kind: 2
   props:
   - x: 9
     y: 6
@@ -224,4 +224,7 @@ MonoBehaviour:
   - x: 11
     y: 5
     kind: 2
-  markers: []
+  markers:
+  - x: 5
+    y: 5
+    kind: 5

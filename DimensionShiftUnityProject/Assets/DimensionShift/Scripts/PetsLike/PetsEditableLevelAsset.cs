@@ -13,6 +13,7 @@ namespace DimensionShift.PetsLike
         [SerializeField] private PetsGridCoord spawn = new PetsGridCoord(2, 2);
         [SerializeField] private List<PetsEditableCell> cells = new List<PetsEditableCell>();
         [SerializeField] private List<PetsEditableProp> props = new List<PetsEditableProp>();
+        [SerializeField] private List<PetsEditableStar> stars = new List<PetsEditableStar>();
         [SerializeField] private List<PetsEditableMarker> markers = new List<PetsEditableMarker>();
 
         public int Width => Mathf.Max(1, width);
@@ -21,6 +22,7 @@ namespace DimensionShift.PetsLike
         public PetsGridCoord Spawn => ClampCoord(spawn);
         public IReadOnlyList<PetsEditableCell> Cells => cells;
         public IReadOnlyList<PetsEditableProp> Props => props;
+        public IReadOnlyList<PetsEditableStar> Stars => stars;
         public IReadOnlyList<PetsEditableMarker> Markers => markers;
 
         public void Resize(int newWidth, int newHeight)
@@ -30,6 +32,7 @@ namespace DimensionShift.PetsLike
             spawn = ClampCoord(spawn);
             cells.RemoveAll(cell => cell.x < 0 || cell.y < 0 || cell.x >= width || cell.y >= height);
             props.RemoveAll(prop => prop.x < 0 || prop.y < 0 || prop.x >= width || prop.y >= height);
+            stars.RemoveAll(star => star.x < 0 || star.y < 0 || star.x >= width || star.y >= height);
             markers.RemoveAll(marker => marker.x < 0 || marker.y < 0 || marker.x >= width || marker.y >= height);
         }
 
@@ -80,7 +83,15 @@ namespace DimensionShift.PetsLike
 
             if (TryConvertLegacyPropCell(kind, out PetsPropKind propKind))
             {
-                SetProp(x, y, propKind);
+                if (propKind == PetsPropKind.Star)
+                {
+                    SetStar(x, y, true);
+                }
+                else
+                {
+                    SetProp(x, y, propKind);
+                }
+
                 if (GetCell(x, y) == PetsCellKind.Empty)
                 {
                     SetCell(x, y, PetsCellKind.WhiteInterior);
@@ -98,6 +109,7 @@ namespace DimensionShift.PetsLike
                 }
 
                 SetProp(x, y, PetsPropKind.None);
+                SetStar(x, y, false);
                 SetMarker(x, y, PetsCellKind.Empty);
                 return;
             }
@@ -116,11 +128,12 @@ namespace DimensionShift.PetsLike
             int propIndex = PropIndexOf(x, y);
             if (propIndex >= 0)
             {
-                return props[propIndex].kind;
+                PetsPropKind propKind = props[propIndex].kind;
+                return propKind == PetsPropKind.Star ? PetsPropKind.None : propKind;
             }
 
             int cellIndex = IndexOf(x, y);
-            if (cellIndex >= 0 && TryConvertLegacyPropCell(cells[cellIndex].kind, out PetsPropKind legacyProp))
+            if (cellIndex >= 0 && TryConvertLegacyPropCell(cells[cellIndex].kind, out PetsPropKind legacyProp) && legacyProp != PetsPropKind.Star)
             {
                 return legacyProp;
             }
@@ -152,10 +165,16 @@ namespace DimensionShift.PetsLike
                 return;
             }
 
+            if (kind == PetsPropKind.Star)
+            {
+                SetStar(x, y, true);
+                return;
+            }
+
             int index = PropIndexOf(x, y);
             if (kind == PetsPropKind.None)
             {
-                if (index >= 0)
+                if (index >= 0 && props[index].kind != PetsPropKind.Star)
                 {
                     props.RemoveAt(index);
                 }
@@ -165,11 +184,51 @@ namespace DimensionShift.PetsLike
 
             if (index >= 0)
             {
+                if (props[index].kind == PetsPropKind.Star)
+                {
+                    EnsureStarRecord(x, y);
+                    props.Add(new PetsEditableProp(x, y, kind));
+                    return;
+                }
+
                 props[index] = new PetsEditableProp(x, y, kind);
                 return;
             }
 
             props.Add(new PetsEditableProp(x, y, kind));
+        }
+
+        public bool HasStar(int x, int y)
+        {
+            if (StarIndexOf(x, y) >= 0)
+            {
+                return true;
+            }
+
+            int propIndex = PropIndexOf(x, y);
+            if (propIndex >= 0 && props[propIndex].kind == PetsPropKind.Star)
+            {
+                return true;
+            }
+
+            int cellIndex = IndexOf(x, y);
+            return cellIndex >= 0 && cells[cellIndex].kind == PetsCellKind.Star;
+        }
+
+        public void SetStar(int x, int y, bool hasStar)
+        {
+            if (x < 0 || y < 0 || x >= Width || y >= Height)
+            {
+                return;
+            }
+
+            if (!hasStar)
+            {
+                RemoveStarRecord(x, y);
+                return;
+            }
+
+            EnsureStarRecord(x, y);
         }
 
         public void SetMarker(int x, int y, PetsCellKind kind)
@@ -208,6 +267,7 @@ namespace DimensionShift.PetsLike
         {
             cells.Clear();
             props.Clear();
+            stars.Clear();
             markers.Clear();
         }
 
@@ -234,6 +294,14 @@ namespace DimensionShift.PetsLike
                         definition.SetCell(cell.x, cell.y, PetsCellKind.WhiteInterior);
                     }
                 }
+                else if (cell.kind == PetsCellKind.Star)
+                {
+                    definition.SetStar(cell.x, cell.y, true);
+                    if (definition.GetCell(cell.x, cell.y) == PetsCellKind.Empty)
+                    {
+                        definition.SetCell(cell.x, cell.y, PetsCellKind.WhiteInterior);
+                    }
+                }
                 else
                 {
                     definition.SetCell(cell.x, cell.y, cell.kind);
@@ -248,10 +316,33 @@ namespace DimensionShift.PetsLike
                     continue;
                 }
 
-                definition.SetProp(prop.x, prop.y, prop.kind);
+                if (prop.kind == PetsPropKind.Star)
+                {
+                    definition.SetStar(prop.x, prop.y, true);
+                }
+                else
+                {
+                    definition.SetProp(prop.x, prop.y, prop.kind);
+                }
+
                 if (definition.GetCell(prop.x, prop.y) == PetsCellKind.Empty)
                 {
                     definition.SetCell(prop.x, prop.y, PetsCellKind.WhiteInterior);
+                }
+            }
+
+            for (int i = 0; i < stars.Count; i++)
+            {
+                PetsEditableStar star = stars[i];
+                if (star.x < 0 || star.y < 0 || star.x >= Width || star.y >= Height)
+                {
+                    continue;
+                }
+
+                definition.SetStar(star.x, star.y, true);
+                if (definition.GetCell(star.x, star.y) == PetsCellKind.Empty)
+                {
+                    definition.SetCell(star.x, star.y, PetsCellKind.WhiteInterior);
                 }
             }
 
@@ -297,6 +388,66 @@ namespace DimensionShift.PetsLike
             }
 
             return -1;
+        }
+
+        private int StarIndexOf(int x, int y)
+        {
+            for (int i = 0; i < stars.Count; i++)
+            {
+                PetsEditableStar star = stars[i];
+                if (star.x == x && star.y == y)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private void EnsureStarRecord(int x, int y)
+        {
+            if (StarIndexOf(x, y) < 0)
+            {
+                stars.Add(new PetsEditableStar(x, y));
+            }
+
+            int propIndex = PropIndexOf(x, y);
+            if (propIndex >= 0 && props[propIndex].kind == PetsPropKind.Star)
+            {
+                props.RemoveAt(propIndex);
+            }
+
+            int cellIndex = IndexOf(x, y);
+            if (cellIndex >= 0 && cells[cellIndex].kind == PetsCellKind.Star)
+            {
+                cells[cellIndex] = new PetsEditableCell(x, y, PetsCellKind.WhiteInterior);
+            }
+
+            if (GetCell(x, y) == PetsCellKind.Empty)
+            {
+                SetCell(x, y, PetsCellKind.WhiteInterior);
+            }
+        }
+
+        private void RemoveStarRecord(int x, int y)
+        {
+            int starIndex = StarIndexOf(x, y);
+            if (starIndex >= 0)
+            {
+                stars.RemoveAt(starIndex);
+            }
+
+            int propIndex = PropIndexOf(x, y);
+            if (propIndex >= 0 && props[propIndex].kind == PetsPropKind.Star)
+            {
+                props.RemoveAt(propIndex);
+            }
+
+            int cellIndex = IndexOf(x, y);
+            if (cellIndex >= 0 && cells[cellIndex].kind == PetsCellKind.Star)
+            {
+                cells[cellIndex] = new PetsEditableCell(x, y, PetsCellKind.WhiteInterior);
+            }
         }
 
         private int MarkerIndexOf(int x, int y)
@@ -464,6 +615,19 @@ namespace DimensionShift.PetsLike
             this.x = x;
             this.y = y;
             this.kind = kind;
+        }
+    }
+
+    [Serializable]
+    public struct PetsEditableStar
+    {
+        public int x;
+        public int y;
+
+        public PetsEditableStar(int x, int y)
+        {
+            this.x = x;
+            this.y = y;
         }
     }
 

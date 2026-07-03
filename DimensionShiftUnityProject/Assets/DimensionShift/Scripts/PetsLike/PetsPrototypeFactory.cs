@@ -9,7 +9,7 @@ namespace DimensionShift.PetsLike
     public static class PetsPrototypeFactory
     {
         private const string Player2DVisualPrefabPath = "Assets/Art/2d/player/Player2DVisual.prefab";
-        private const string Player25DCharacterPath = "Assets/Art/3D/character.fbx";
+        private const string Player25DCharacterPath = "Assets/Art/3D/character/3D_Character.fbx";
 
         public static GameObject Build(PetsPrototypeLevelKind levelKind)
         {
@@ -350,18 +350,176 @@ namespace DimensionShift.PetsLike
                 return null;
             }
 
-            GameObject instance = Object.Instantiate(prefab, parent);
+            GameObject orientationRoot = new GameObject("Character 2.5D Orientation Root");
+            orientationRoot.transform.SetParent(parent);
+            orientationRoot.transform.localPosition = new Vector3(0f, -0.54f, 0f);
+            orientationRoot.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            orientationRoot.transform.localScale = Vector3.one;
+
+            GameObject instance = Object.Instantiate(prefab, orientationRoot.transform);
             instance.name = "Character FBX Visual";
-            instance.transform.localPosition = new Vector3(0f, -0.54f, 0f);
-            instance.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = Quaternion.identity;
             instance.transform.localScale = Vector3.one;
 
+            Animator animator = instance.GetComponentInChildren<Animator>(true);
+            if (animator == null)
+            {
+                animator = instance.AddComponent<Animator>();
+            }
+
+            animator.applyRootMotion = false;
+            PetsPlayer25DAnimator playerAnimator = orientationRoot.GetComponent<PetsPlayer25DAnimator>();
+            if (playerAnimator == null)
+            {
+                playerAnimator = orientationRoot.AddComponent<PetsPlayer25DAnimator>();
+            }
+
+            ConfigurePlayer25DAnimator(playerAnimator, animator);
             RemoveGeneratedColliders(instance);
-            return instance;
+            return orientationRoot;
 #else
             return null;
 #endif
         }
+
+#if UNITY_EDITOR
+        private static void ConfigurePlayer25DAnimator(PetsPlayer25DAnimator playerAnimator, Animator animator)
+        {
+            AnimationClip[] clips = LoadPlayer25DClips();
+            AnimationClip jump = FindClip(clips, null, "jump");
+            AnimationClip idle = FindClip(clips, jump, "idle", "stop", "stand", "wait");
+            AnimationClip walk = FindClip(clips, idle, jump, "walk", "run", "move");
+
+            if (idle == null || walk == null || idle == walk)
+            {
+                AnimationClip firstWalk = FindClip(clips, jump, "walk", "run", "move");
+                AnimationClip lastWalk = FindLastClip(clips, jump, "walk", "run", "move");
+                if ((idle == null || idle == walk) && firstWalk != null && firstWalk != lastWalk)
+                {
+                    idle = firstWalk;
+                }
+
+                if ((walk == null || walk == idle || walk == firstWalk) && lastWalk != null)
+                {
+                    walk = lastWalk;
+                }
+            }
+
+            if (idle == null)
+            {
+                idle = FindFirstDifferentClip(clips, jump, walk) ?? walk ?? jump;
+            }
+
+            if (walk == null)
+            {
+                walk = FindFirstDifferentClip(clips, jump, idle) ?? idle ?? jump;
+            }
+
+            if (jump == null)
+            {
+                jump = FindFirstDifferentClip(clips, idle, walk) ?? walk ?? idle;
+            }
+
+            playerAnimator.Configure(animator, idle, walk, jump);
+        }
+
+        private static AnimationClip[] LoadPlayer25DClips()
+        {
+            Object[] assets = AssetDatabase.LoadAllAssetRepresentationsAtPath(Player25DCharacterPath);
+            int clipCount = 0;
+            for (int i = 0; i < assets.Length; i++)
+            {
+                if (assets[i] is AnimationClip)
+                {
+                    clipCount++;
+                }
+            }
+
+            AnimationClip[] clips = new AnimationClip[clipCount];
+            int nextClip = 0;
+            for (int i = 0; i < assets.Length; i++)
+            {
+                if (assets[i] is AnimationClip clip)
+                {
+                    clips[nextClip] = clip;
+                    nextClip++;
+                }
+            }
+
+            return clips;
+        }
+
+        private static AnimationClip FindClip(AnimationClip[] clips, AnimationClip excludedClip, params string[] nameParts)
+        {
+            return FindClip(clips, excludedClip, null, nameParts);
+        }
+
+        private static AnimationClip FindClip(AnimationClip[] clips, AnimationClip firstExcludedClip, AnimationClip secondExcludedClip, params string[] nameParts)
+        {
+            for (int i = 0; i < clips.Length; i++)
+            {
+                AnimationClip clip = clips[i];
+                if (clip == null || clip == firstExcludedClip || clip == secondExcludedClip)
+                {
+                    continue;
+                }
+
+                if (NameContainsAny(clip.name, nameParts))
+                {
+                    return clip;
+                }
+            }
+
+            return null;
+        }
+
+        private static AnimationClip FindLastClip(AnimationClip[] clips, AnimationClip excludedClip, params string[] nameParts)
+        {
+            for (int i = clips.Length - 1; i >= 0; i--)
+            {
+                AnimationClip clip = clips[i];
+                if (clip == null || clip == excludedClip)
+                {
+                    continue;
+                }
+
+                if (NameContainsAny(clip.name, nameParts))
+                {
+                    return clip;
+                }
+            }
+
+            return null;
+        }
+
+        private static AnimationClip FindFirstDifferentClip(AnimationClip[] clips, AnimationClip firstExcludedClip, AnimationClip secondExcludedClip)
+        {
+            for (int i = 0; i < clips.Length; i++)
+            {
+                AnimationClip clip = clips[i];
+                if (clip != null && clip != firstExcludedClip && clip != secondExcludedClip)
+                {
+                    return clip;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool NameContainsAny(string name, string[] nameParts)
+        {
+            for (int i = 0; i < nameParts.Length; i++)
+            {
+                if (name.IndexOf(nameParts[i], System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+#endif
 
         private static void RemoveGeneratedColliders(GameObject root)
         {

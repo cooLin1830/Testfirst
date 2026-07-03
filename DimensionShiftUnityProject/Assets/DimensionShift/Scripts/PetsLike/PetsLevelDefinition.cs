@@ -8,6 +8,7 @@ namespace DimensionShift.PetsLike
         private readonly Dictionary<Vector2Int, PetsCellKind> twoDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsCellKind> twoPointFiveDCells = new Dictionary<Vector2Int, PetsCellKind>();
         private readonly Dictionary<Vector2Int, PetsPropKind> props = new Dictionary<Vector2Int, PetsPropKind>();
+        private readonly HashSet<Vector2Int> stars = new HashSet<Vector2Int>();
         private readonly Dictionary<Vector2Int, PetsCellKind> markers = new Dictionary<Vector2Int, PetsCellKind>();
         private bool hasTwoPointFiveDOverride;
 
@@ -20,6 +21,7 @@ namespace DimensionShift.PetsLike
         public IEnumerable<KeyValuePair<Vector2Int, PetsCellKind>> TwoDCells => twoDCells;
         public IEnumerable<KeyValuePair<Vector2Int, PetsCellKind>> TwoPointFiveDCells => hasTwoPointFiveDOverride ? twoPointFiveDCells : twoDCells;
         public IEnumerable<KeyValuePair<Vector2Int, PetsPropKind>> Props => props;
+        public IEnumerable<Vector2Int> Stars => stars;
         public IEnumerable<KeyValuePair<Vector2Int, PetsCellKind>> Markers => markers;
 
         public PetsLevelDefinition(int width, int height, float cellSize)
@@ -40,7 +42,15 @@ namespace DimensionShift.PetsLike
 
             if (TryConvertLegacyPropCell(kind, out PetsPropKind propKind))
             {
-                SetProp(x, y, propKind);
+                if (propKind == PetsPropKind.Star)
+                {
+                    SetStar(x, y, true);
+                }
+                else
+                {
+                    SetProp(x, y, propKind);
+                }
+
                 EnsureTerrainForProp(twoDCells, x, y);
                 if (!hasTwoPointFiveDOverride)
                 {
@@ -59,6 +69,7 @@ namespace DimensionShift.PetsLike
             if (kind == PetsCellKind.Empty)
             {
                 SetProp(x, y, PetsPropKind.None);
+                SetStar(x, y, false);
                 SetMarker(x, y, PetsCellKind.Empty);
             }
         }
@@ -73,7 +84,15 @@ namespace DimensionShift.PetsLike
 
             if (TryConvertLegacyPropCell(kind, out PetsPropKind propKind))
             {
-                SetProp(x, y, propKind);
+                if (propKind == PetsPropKind.Star)
+                {
+                    SetStar(x, y, true);
+                }
+                else
+                {
+                    SetProp(x, y, propKind);
+                }
+
                 if (mode == PetsPerspectiveMode.TwoPointFiveD)
                 {
                     EnsureTwoPointFiveDOverride();
@@ -126,6 +145,12 @@ namespace DimensionShift.PetsLike
         public void SetProp(int x, int y, PetsPropKind kind)
         {
             Vector2Int coord = new Vector2Int(x, y);
+            if (kind == PetsPropKind.Star)
+            {
+                SetStar(x, y, true);
+                return;
+            }
+
             if (kind == PetsPropKind.None)
             {
                 props.Remove(coord);
@@ -133,6 +158,20 @@ namespace DimensionShift.PetsLike
             }
 
             props[coord] = kind;
+            EnsureTerrainForProp(twoDCells, x, y);
+            EnsureTerrainForProp(twoPointFiveDCells, x, y);
+        }
+
+        public void SetStar(int x, int y, bool hasStar)
+        {
+            Vector2Int coord = new Vector2Int(x, y);
+            if (!hasStar)
+            {
+                stars.Remove(coord);
+                return;
+            }
+
+            stars.Add(coord);
             EnsureTerrainForProp(twoDCells, x, y);
             EnsureTerrainForProp(twoPointFiveDCells, x, y);
         }
@@ -210,6 +249,16 @@ namespace DimensionShift.PetsLike
         public PetsPropKind GetProp(int x, int y)
         {
             return props.TryGetValue(new Vector2Int(x, y), out PetsPropKind kind) ? kind : PetsPropKind.None;
+        }
+
+        public bool HasStar(PetsGridCoord coord)
+        {
+            return HasStar(coord.x, coord.y);
+        }
+
+        public bool HasStar(int x, int y)
+        {
+            return stars.Contains(new Vector2Int(x, y));
         }
 
         public PetsCellKind GetMarker(PetsGridCoord coord)

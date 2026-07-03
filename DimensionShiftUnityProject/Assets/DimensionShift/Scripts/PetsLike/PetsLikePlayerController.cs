@@ -12,6 +12,7 @@ namespace DimensionShift.PetsLike
         [SerializeField] private Renderer bodyRenderer;
         [SerializeField] private PetsPlayerVisualRig visualRig;
         [SerializeField] private PetsPlayer2DAnimator twoDAnimator;
+        [SerializeField] private PetsPlayer25DAnimator twoPointFiveDAnimator;
 
         [Header("2D Movement")]
         [SerializeField] private float twoDMoveSpeed = 6f;
@@ -25,7 +26,10 @@ namespace DimensionShift.PetsLike
 
         [Header("Top Down Movement")]
         [SerializeField] private float topDownMoveSpeed = 4.8f;
-        [SerializeField] private float topDownStepSnap = 10f;
+        [SerializeField] private float topDownAcceleration = 34f;
+        [SerializeField] private float topDownDeceleration = 48f;
+        [SerializeField] private float topDownInputDeadZone = 0.08f;
+        [SerializeField] private float topDownGroundHeight = 0.55f;
         [SerializeField] private float jumpArcHeight = 0.9f;
         [SerializeField] private float jumpArcDuration = 0.28f;
 
@@ -66,6 +70,8 @@ namespace DimensionShift.PetsLike
         private float previousTwoDBottom;
         private bool hasPreviousTwoDBounds;
         private Vector2Int lastTopDownDirection = Vector2Int.right;
+        private Vector3 topDownMoveVelocity;
+        private Vector3 topDownAnimatorVelocity;
 
         public PetsGridCoord CurrentGridCoord => currentGridCoord;
         public bool InBlackRegion => inBlackRegion;
@@ -81,6 +87,7 @@ namespace DimensionShift.PetsLike
             bodyRenderer = bodyRenderer != null ? bodyRenderer : GetComponentInChildren<Renderer>();
             visualRig = visualRig != null ? visualRig : GetComponentInChildren<PetsPlayerVisualRig>();
             twoDAnimator = twoDAnimator != null ? twoDAnimator : GetComponentInChildren<PetsPlayer2DAnimator>(true);
+            twoPointFiveDAnimator = twoPointFiveDAnimator != null ? twoPointFiveDAnimator : GetComponentInChildren<PetsPlayer25DAnimator>(true);
             SnapToGridCoord(spawn, PetsPerspectiveMode.TwoD);
             RecordSafePosition();
         }
@@ -111,6 +118,11 @@ namespace DimensionShift.PetsLike
                 twoDAnimator = GetComponentInChildren<PetsPlayer2DAnimator>(true);
             }
 
+            if (twoPointFiveDAnimator == null)
+            {
+                twoPointFiveDAnimator = GetComponentInChildren<PetsPlayer25DAnimator>(true);
+            }
+
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             body.constraints = RigidbodyConstraints.FreezeRotation;
@@ -133,6 +145,12 @@ namespace DimensionShift.PetsLike
             {
                 RespawnAtLastSafePosition();
             }
+
+            if (currentMode == PetsPerspectiveMode.TwoPointFiveD && level != null && !reachedExit)
+            {
+                jumpBufferTimer = Mathf.Max(0f, jumpBufferTimer - Time.deltaTime);
+                TickTopDown(Time.deltaTime);
+            }
         }
 
         private void FixedUpdate()
@@ -142,16 +160,10 @@ namespace DimensionShift.PetsLike
                 return;
             }
 
-            jumpBufferTimer = Mathf.Max(0f, jumpBufferTimer - Time.fixedDeltaTime);
-
             if (currentMode == PetsPerspectiveMode.TwoD)
             {
+                jumpBufferTimer = Mathf.Max(0f, jumpBufferTimer - Time.fixedDeltaTime);
                 TickTwoD();
-            }
-            else
-            {
-                currentGridCoord = ResolveRuleCoord();
-                TickTopDown();
             }
         }
 
@@ -168,6 +180,11 @@ namespace DimensionShift.PetsLike
 
             if (mode == PetsPerspectiveMode.TwoD)
             {
+                topDownMoveVelocity = Vector3.zero;
+                topDownAnimatorVelocity = Vector3.zero;
+                body.isKinematic = false;
+                body.interpolation = RigidbodyInterpolation.Interpolate;
+                body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
                 body.useGravity = true;
                 body.constraints |= RigidbodyConstraints.FreezePositionZ;
                 hasTwoDGroundState = false;
@@ -177,9 +194,15 @@ namespace DimensionShift.PetsLike
             else
             {
                 hasTwoDGroundState = false;
+                topDownMoveVelocity = Vector3.zero;
+                topDownAnimatorVelocity = Vector3.zero;
+                body.isKinematic = true;
+                body.interpolation = RigidbodyInterpolation.None;
+                body.collisionDetectionMode = CollisionDetectionMode.Discrete;
                 body.useGravity = false;
                 body.velocity = Vector3.zero;
                 body.angularVelocity = Vector3.zero;
+                body.constraints |= RigidbodyConstraints.FreezePositionY;
             }
 
             UpdateTwoDAnimator();
@@ -195,11 +218,13 @@ namespace DimensionShift.PetsLike
             currentGridCoord = coord;
             isGrounded2D = false;
             hasTwoDGroundState = false;
+            topDownMoveVelocity = Vector3.zero;
+            topDownAnimatorVelocity = Vector3.zero;
             standingOnBlackTopEdge = false;
             standingOnBlackBottomEdge = false;
             Vector3 target = mode == PetsPerspectiveMode.TwoD
                 ? level.GridToTwoDWorld(coord, twoDDefaultZ) + Vector3.up * 0.55f
-                : level.GridToTopDownWorld(coord, 0.55f);
+                : level.GridToTopDownWorld(coord, topDownGroundHeight);
 
             transform.position = target;
             if (body != null)
@@ -433,9 +458,9 @@ namespace DimensionShift.PetsLike
             body.velocity = new Vector3(body.velocity.x, 0f, 0f);
         }
 
-        private void TickTopDown()
+        private void TickTopDown(float deltaTime)
         {
-            if (isArcJumping)
+            if (isArcJumping || deltaTime <= 0f)
             {
                 return;
             }
@@ -454,14 +479,31 @@ namespace DimensionShift.PetsLike
                 return;
             }
 
-            PetsGridCoord candidate = level.WorldToGrid(body.position, PetsPerspectiveMode.TwoPointFiveD);
-            Vector3 move = new Vector3(rawInput.x, 0f, rawInput.y);
-            move = Vector3.ClampMagnitude(move, 1f);
-            Vector3 nextPosition = body.position + move * (topDownMoveSpeed * Time.fixedDeltaTime);
+            if (rawInput.sqrMagnitude < topDownInputDeadZone * topDownInputDeadZone)
+            {
+                rawInput = Vector2.zero;
+            }
+
+            Vector3 desiredMove = new Vector3(rawInput.x, 0f, rawInput.y);
+            desiredMove = Vector3.ClampMagnitude(desiredMove, 1f);
+            bool hasMoveInput = desiredMove.sqrMagnitude > 0.0001f;
+            Vector3 targetVelocity = desiredMove * topDownMoveSpeed;
+            float velocityChangeRate = hasMoveInput ? topDownAcceleration : topDownDeceleration;
+            topDownMoveVelocity = Vector3.MoveTowards(topDownMoveVelocity, targetVelocity, velocityChangeRate * deltaTime);
+            if (!hasMoveInput && topDownMoveVelocity.sqrMagnitude < 0.0004f)
+            {
+                topDownMoveVelocity = Vector3.zero;
+            }
+
+            Vector3 currentPosition = body.position;
+            currentPosition.y = topDownGroundHeight;
+            Vector3 nextPosition = currentPosition + topDownMoveVelocity * deltaTime;
+            nextPosition.y = topDownGroundHeight;
             PetsGridCoord nextCoord = level.WorldToGrid(nextPosition, PetsPerspectiveMode.TwoPointFiveD);
-            Vector2Int moveDirection = ResolveCardinalDirection(rawInput);
-            PetsGridCoord intendedCoord = currentGridCoord + new PetsGridCoord(moveDirection.x, moveDirection.y);
-            bool enteringIntendedCell = moveDirection != Vector2Int.zero && nextCoord.Equals(intendedCoord);
+            Vector2Int moveDirection = ResolveCardinalDirection(new Vector2(topDownMoveVelocity.x, topDownMoveVelocity.z));
+            PetsGridCoord baseCoord = level.WorldToGrid(currentPosition, PetsPerspectiveMode.TwoPointFiveD);
+            PetsGridCoord intendedCoord = baseCoord + new PetsGridCoord(moveDirection.x, moveDirection.y);
+            bool enteringIntendedCell = hasMoveInput && moveDirection != Vector2Int.zero && nextCoord.Equals(intendedCoord);
 
             bool blockedByProp = level.IsTopDownBlockedByProp(nextCoord);
             if (blockedByProp && enteringIntendedCell && level.TryPushBox(nextCoord, moveDirection))
@@ -471,18 +513,22 @@ namespace DimensionShift.PetsLike
 
             if (!blockedByProp && level.IsValidPlayerCell(nextCoord, PetsPerspectiveMode.TwoPointFiveD))
             {
-                nextPosition.y = 0.55f;
-                body.MovePosition(nextPosition);
+                SetBodyPosition(nextPosition);
                 currentGridCoord = nextCoord;
+                topDownAnimatorVelocity = topDownMoveVelocity;
                 RecordSafePosition();
             }
             else if (level.IsTopDownHole(nextCoord))
             {
                 RespawnAtLastSafePosition();
             }
+            else
+            {
+                topDownMoveVelocity = Vector3.zero;
+                topDownAnimatorVelocity = Vector3.zero;
+                currentGridCoord = baseCoord;
+            }
 
-            Vector3 snapTarget = level.GridToTopDownWorld(currentGridCoord, 0.55f);
-            body.position = Vector3.Lerp(body.position, snapTarget, topDownStepSnap * Time.fixedDeltaTime * 0.25f);
             UpdateTwoDAnimator();
         }
 
@@ -493,6 +539,8 @@ namespace DimensionShift.PetsLike
                 return;
             }
 
+            topDownAnimatorVelocity = Vector3.zero;
+            topDownMoveVelocity = Vector3.zero;
             PetsGridCoord start = level.WorldToGrid(body.position, PetsPerspectiveMode.TwoPointFiveD);
             PetsGridCoord step = new PetsGridCoord(direction.x, direction.y);
             PetsGridCoord adjacent = start + step;
@@ -500,6 +548,7 @@ namespace DimensionShift.PetsLike
 
             if (level.IsTopDownBlockedByProp(adjacent))
             {
+                topDownAnimatorVelocity = Vector3.zero;
                 return;
             }
 
@@ -525,6 +574,7 @@ namespace DimensionShift.PetsLike
                 }
             }
 
+            topDownAnimatorVelocity = new Vector3(direction.x, 0f, direction.y) * topDownMoveSpeed;
             StartCoroutine(TopDownJumpArc(start, target));
         }
 
@@ -574,10 +624,14 @@ namespace DimensionShift.PetsLike
         private IEnumerator TopDownJumpArc(PetsGridCoord start, PetsGridCoord target)
         {
             isArcJumping = true;
+            body.constraints = RigidbodyConstraints.FreezeRotation;
             body.velocity = Vector3.zero;
+            topDownMoveVelocity = Vector3.zero;
+            UpdateTwoDAnimator();
 
-            Vector3 from = level.GridToTopDownWorld(start, 0.55f);
-            Vector3 to = level.GridToTopDownWorld(target, 0.55f);
+            Vector3 from = body.position;
+            from.y = topDownGroundHeight;
+            Vector3 to = level.GridToTopDownWorld(target, topDownGroundHeight);
             float elapsed = 0f;
 
             while (elapsed < jumpArcDuration)
@@ -587,13 +641,18 @@ namespace DimensionShift.PetsLike
                 float arc = Mathf.Sin(t * Mathf.PI) * jumpArcHeight;
                 Vector3 position = Vector3.Lerp(from, to, t);
                 position.y += arc;
-                body.MovePosition(position);
+                SetBodyPosition(position);
                 yield return null;
             }
 
-            body.position = to;
+            SetBodyPosition(to);
+            body.constraints = currentMode == PetsPerspectiveMode.TwoPointFiveD
+                ? RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY
+                : RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionZ;
             currentGridCoord = target;
             isArcJumping = false;
+            topDownMoveVelocity = Vector3.zero;
+            topDownAnimatorVelocity = Vector3.zero;
             RecordSafePosition();
             UpdateTwoDAnimator();
         }
@@ -625,10 +684,22 @@ namespace DimensionShift.PetsLike
             hasTwoDGroundState = false;
             standingOnBlackTopEdge = false;
             standingOnBlackBottomEdge = false;
+            topDownMoveVelocity = Vector3.zero;
+            topDownAnimatorVelocity = Vector3.zero;
             currentGridCoord = level != null ? ResolveRuleCoord() : currentGridCoord;
             SetBlackRegionState(level != null && level.IsBlackRegion(currentGridCoord));
             UpdateTwoDAnimator();
             CapturePreviousTwoDBounds();
+        }
+
+        private void SetBodyPosition(Vector3 position)
+        {
+            if (body != null)
+            {
+                body.position = position;
+            }
+
+            transform.position = position;
         }
 
         private void UpdateTwoDAnimator()
@@ -638,13 +709,27 @@ namespace DimensionShift.PetsLike
                 twoDAnimator = GetComponentInChildren<PetsPlayer2DAnimator>(true);
             }
 
-            if (twoDAnimator == null || body == null)
+            if (twoPointFiveDAnimator == null)
+            {
+                twoPointFiveDAnimator = GetComponentInChildren<PetsPlayer25DAnimator>(true);
+            }
+
+            if (body == null)
             {
                 return;
             }
 
             bool grounded = isGrounded2D || standingOnBlackTopEdge || standingOnBlackBottomEdge;
-            twoDAnimator.ApplyState(currentMode, body.velocity, grounded);
+            if (twoDAnimator != null)
+            {
+                twoDAnimator.ApplyState(currentMode, body.velocity, grounded);
+            }
+
+            if (twoPointFiveDAnimator != null)
+            {
+                bool grounded25D = currentMode == PetsPerspectiveMode.TwoPointFiveD && !isArcJumping;
+                twoPointFiveDAnimator.ApplyState(currentMode, topDownAnimatorVelocity, grounded25D, isArcJumping);
+            }
         }
 
         private void ApplyBlackRegionEdgeRules(ref PetsGridCoord nextCoord, PetsGridCoord fallbackCoord)
