@@ -306,9 +306,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   editableLevel: {fileID: 11400000, guid: 9edc8e354a5d9044095173f3cab6e64c, type: 2}
-  showGrid: 1
-  showCells: 1
-  showLabels: 1
+  showGeneratedPreview: 1
+  generatedPreviewMode: 0
+  rebuildGeneratedPreviewAfterPaint: 1
+  showGrid: 0
+  showCells: 0
+  showLabels: 0
   gridColor: {r: 0, g: 0, b: 0, a: 0.18}
   emptyColor: {r: 1, g: 1, b: 1, a: 0.08}
   whiteColor: {r: 1, g: 1, b: 1, a: 0.65}

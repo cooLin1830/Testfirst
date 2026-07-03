@@ -6,6 +6,15 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/DB Scene1.unity
+    guid: f5972a456300e704f8bea67a00165b83
+  - enabled: 1
+    path: Assets/DB Scene2.unity
+    guid: 7886b402b852ca24eb69248ab139cb51
+  - enabled: 1
+    path: Assets/DimensionShift/Scenes/scene 3.unity
+    guid: 4e90e4e78b5ff4a6ba08cd864173c4c8
+  - enabled: 1
     path: Assets/DimensionShift/Scenes/DimensionShiftPrototype.unity
     guid: 3ac92e7fead34d329d92ff2f87c9c28d
   - enabled: 1

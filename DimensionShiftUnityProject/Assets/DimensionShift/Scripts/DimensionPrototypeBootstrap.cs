@@ -1,5 +1,7 @@
 using DimensionShift.PetsLike;
+using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace DimensionShift
 {
@@ -9,9 +11,26 @@ namespace DimensionShift
         [SerializeField] private bool rebuildIfManagerExists;
         [SerializeField] private PetsPrototypeLevelKind levelKind = PetsPrototypeLevelKind.MechanicTestRoom;
         [SerializeField] private PetsEditableLevelAsset editableLevel;
+        [SerializeField] private string nextSceneName;
+        [SerializeField] private float nextSceneDelay = 0.25f;
+
+        private bool isLoadingNextScene;
 
         public PetsPrototypeLevelKind LevelKind => levelKind;
         public PetsEditableLevelAsset EditableLevel => editableLevel;
+        public string NextSceneName => nextSceneName;
+        public bool HasNextScene => !string.IsNullOrWhiteSpace(nextSceneName);
+
+        public static bool TryCompleteActiveLevel()
+        {
+            DimensionPrototypeBootstrap bootstrap = Object.FindObjectOfType<DimensionPrototypeBootstrap>();
+            if (bootstrap == null)
+            {
+                return false;
+            }
+
+            return bootstrap.TryLoadNextScene();
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoCreateInEmptyScene()
@@ -42,6 +61,41 @@ namespace DimensionShift
             }
 
             PetsPrototypeFactory.Build(levelKind, editableLevel);
+        }
+
+        public bool TryLoadNextScene()
+        {
+            if (!Application.isPlaying || !HasNextScene)
+            {
+                return false;
+            }
+
+            if (isLoadingNextScene)
+            {
+                return true;
+            }
+
+            isLoadingNextScene = true;
+            StartCoroutine(LoadNextSceneAfterDelay());
+            return true;
+        }
+
+        private IEnumerator LoadNextSceneAfterDelay()
+        {
+            if (nextSceneDelay > 0f)
+            {
+                yield return new WaitForSeconds(nextSceneDelay);
+            }
+
+            string sceneName = nextSceneName.Trim();
+            if (!Application.CanStreamedLevelBeLoaded(sceneName))
+            {
+                Debug.LogError($"Cannot load next scene '{sceneName}'. Add it to Build Settings or fix the next scene name on {nameof(DimensionPrototypeBootstrap)}.", this);
+                isLoadingNextScene = false;
+                yield break;
+            }
+
+            SceneManager.LoadScene(sceneName);
         }
     }
 }

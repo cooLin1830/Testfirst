@@ -152,6 +152,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   editableLevel: {fileID: 11400000, guid: 26abb64f6ce34894da014ffb79a6189a, type: 2}
+  showGeneratedPreview: 1
+  generatedPreviewMode: 1
+  rebuildGeneratedPreviewAfterPaint: 1
   showGrid: 1
   showCells: 1
   showLabels: 1
@@ -166,6 +169,7 @@ MonoBehaviour:
   boxColor: {r: 0.72, g: 0.48, b: 0.22, a: 0.82}
   headBreakBoxColor: {r: 0.62, g: 0.34, b: 0.82, a: 0.82}
   bouncePadColor: {r: 1, g: 0.82, b: 0.16, a: 0.82}
+  starColor: {r: 1, g: 0.86, b: 0.18, a: 0.86}
   spawnColor: {r: 0.28, g: 0.36, b: 1, a: 0.86}
 --- !u!4 &70447746
 Transform:
@@ -401,6 +405,8 @@ MonoBehaviour:
   rebuildIfManagerExists: 0
   levelKind: 2
   editableLevel: {fileID: 11400000, guid: 26abb64f6ce34894da014ffb79a6189a, type: 2}
+  nextSceneName: scene 3
+  nextSceneDelay: 0.25
 --- !u!4 &1051230748
 Transform:
   m_ObjectHideFlags: 0

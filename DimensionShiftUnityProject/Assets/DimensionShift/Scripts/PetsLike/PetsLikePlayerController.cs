@@ -266,7 +266,12 @@ namespace DimensionShift.PetsLike
             if (level != null && level.CanReachExit(currentGridCoord))
             {
                 reachedExit = true;
-                body.velocity = Vector3.zero;
+                if (body != null)
+                {
+                    body.velocity = Vector3.zero;
+                }
+
+                global::DimensionShift.DimensionPrototypeBootstrap.TryCompleteActiveLevel();
             }
         }
 

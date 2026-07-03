@@ -20,7 +20,7 @@ namespace DimensionShift.PetsLike
         private const string Portal2DFrame3Path = "Assets/Art/2d/item/portal3.png";
         private const string Portal2DFrame4Path = "Assets/Art/2d/item/portal4.png";
         private const string Switch2DIconPath = "Assets/Art/2d/item/2D.png";
-        private const string Switch25DIconPath = "Assets/Art/2d/item/3D.png";
+        private const string Switch25DIconPath = "Assets/Art/2d/item/2.5d.png";
         private const string TwoDBrickSpritePath = "Assets/Art/3D/brick.png";
         private const string TwoDBoxSpritePath = "Assets/Art/3D/box.png";
         private const string TopDownBrickFbxPath = "Assets/Art/3D/brick.fbx";

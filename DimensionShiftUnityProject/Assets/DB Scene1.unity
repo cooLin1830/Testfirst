@@ -247,6 +247,8 @@ MonoBehaviour:
   rebuildIfManagerExists: 0
   levelKind: 2
   editableLevel: {fileID: 11400000, guid: ca58fb2cf33a43f4086e9f79326fd4de, type: 2}
+  nextSceneName: DB Scene2
+  nextSceneDelay: 0.25
 --- !u!4 &959085695
 Transform:
   m_ObjectHideFlags: 0
@@ -356,6 +358,70 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!1 &1536700190
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1536700192}
+  - component: {fileID: 1536700191}
+  m_Layer: 0
+  m_Name: PETS Scene Map Preview
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1536700191
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1536700190}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 155f7bd34b36c674e834abb70e9a1021, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  editableLevel: {fileID: 11400000, guid: ca58fb2cf33a43f4086e9f79326fd4de, type: 2}
+  showGeneratedPreview: 1
+  generatedPreviewMode: 1
+  rebuildGeneratedPreviewAfterPaint: 1
+  showGrid: 1
+  showCells: 1
+  showLabels: 1
+  gridColor: {r: 0, g: 0, b: 0, a: 0.18}
+  emptyColor: {r: 1, g: 1, b: 1, a: 0.08}
+  whiteColor: {r: 1, g: 1, b: 1, a: 0.65}
+  blackColor: {r: 0, g: 0, b: 0, a: 0.78}
+  switchTo25DColor: {r: 0.12, g: 0.52, b: 1, a: 0.72}
+  switchTo2DColor: {r: 0.15, g: 0.85, b: 0.38, a: 0.72}
+  exitColor: {r: 1, g: 0.45, b: 0.12, a: 0.72}
+  brickColor: {r: 0.78, g: 0.25, b: 0.18, a: 0.82}
+  boxColor: {r: 0.72, g: 0.48, b: 0.22, a: 0.82}
+  headBreakBoxColor: {r: 0.62, g: 0.34, b: 0.82, a: 0.82}
+  bouncePadColor: {r: 1, g: 0.82, b: 0.16, a: 0.82}
+  starColor: {r: 1, g: 0.86, b: 0.18, a: 0.86}
+  spawnColor: {r: 0.28, g: 0.36, b: 1, a: 0.86}
+--- !u!4 &1536700192
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1536700190}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -363,3 +429,4 @@ SceneRoots:
   - {fileID: 534206546}
   - {fileID: 1045844062}
   - {fileID: 959085695}
+  - {fileID: 1536700192}

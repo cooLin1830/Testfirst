@@ -719,6 +719,7 @@ MonoBehaviour:
   - x: 15
     y: 26
     kind: 3
+  stars: []
   markers:
   - x: 29
     y: 27

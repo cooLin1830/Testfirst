@@ -1,19 +1,70 @@
 using DimensionShift.PetsLike;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace DimensionShiftEditor
 {
     [CustomEditor(typeof(PetsSceneMapPreview))]
     public sealed class PetsSceneMapPreviewEditor : Editor
     {
+        private const string RenderOutputFolder = "Assets/DimensionShift/GeneratedPreviews";
+        private const int RenderWidth = 2048;
+        private const int RenderHeight = 1536;
+        private const float RenderPadding = 1.12f;
+
         private static PetsCellKind brush = PetsCellKind.WhiteInterior;
 
         private PetsSceneMapPreview Preview => (PetsSceneMapPreview)target;
 
+        [MenuItem("Tools/Dimension Shift/Render Scene Map Preview/Current PNG")]
+        public static void RenderActiveScenePreviewCurrentPng()
+        {
+            PetsSceneMapPreview preview = FindOrCreateActiveScenePreview();
+            if (preview != null)
+            {
+                RenderGeneratedPreviewPng(preview, preview.GeneratedPreviewMode);
+            }
+        }
+
+        [MenuItem("Tools/Dimension Shift/Render Scene Map Preview/2D PNG")]
+        public static void RenderActiveScenePreview2DPng()
+        {
+            PetsSceneMapPreview preview = FindOrCreateActiveScenePreview();
+            if (preview != null)
+            {
+                RenderGeneratedPreviewPng(preview, PetsPerspectiveMode.TwoD);
+            }
+        }
+
+        [MenuItem("Tools/Dimension Shift/Render Scene Map Preview/2.5D PNG")]
+        public static void RenderActiveScenePreviewTwoPointFiveDPng()
+        {
+            PetsSceneMapPreview preview = FindOrCreateActiveScenePreview();
+            if (preview != null)
+            {
+                RenderGeneratedPreviewPng(preview, PetsPerspectiveMode.TwoPointFiveD);
+            }
+        }
+
+        [MenuItem("Tools/Dimension Shift/Render Scene Map Preview/Both 2D and 2.5D PNGs")]
+        public static void RenderActiveScenePreviewPngs()
+        {
+            PetsSceneMapPreview preview = FindOrCreateActiveScenePreview();
+            if (preview == null)
+            {
+                return;
+            }
+
+            RenderGeneratedPreviewPng(preview, PetsPerspectiveMode.TwoD);
+            RenderGeneratedPreviewPng(preview, PetsPerspectiveMode.TwoPointFiveD);
+        }
+
         private void OnEnable()
         {
             SceneView.duringSceneGui += DuringSceneGui;
+            EditorApplication.delayCall += RebuildPreviewOnSelection;
         }
 
         private void OnDisable()
@@ -23,7 +74,16 @@ namespace DimensionShiftEditor
 
         public override void OnInspectorGUI()
         {
+            EditorGUI.BeginChangeCheck();
             DrawDefaultInspector();
+            if (EditorGUI.EndChangeCheck())
+            {
+                EditorUtility.SetDirty(Preview);
+                RefreshGeneratedPreview();
+            }
+
+            EditorGUILayout.Space();
+            DrawGeneratedPreviewToolbar();
 
             EditorGUILayout.Space();
             DrawBrushToolbar();
@@ -34,6 +94,7 @@ namespace DimensionShiftEditor
                 {
                     Undo.RecordObject(Preview, "Use Scene PETS Map");
                     Preview.EditableLevel = level;
+                    Preview.RebuildGeneratedPreview();
                     EditorUtility.SetDirty(Preview);
                 }
                 else
@@ -43,6 +104,79 @@ namespace DimensionShiftEditor
             }
 
             EditorGUILayout.HelpBox("Select this preview, then paint directly in the Scene view. Left-click or drag paints the selected brush. The Spawn brush moves the player start without changing terrain.", MessageType.Info);
+        }
+
+        private void DrawGeneratedPreviewToolbar()
+        {
+            EditorGUILayout.LabelField("Generated Full Map Preview", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal();
+            try
+            {
+                if (GUILayout.Button("Rebuild"))
+                {
+                    Preview.RebuildGeneratedPreview();
+                    SceneView.RepaintAll();
+                }
+
+                if (GUILayout.Button("Clear"))
+                {
+                    Preview.ClearGeneratedPreview();
+                    SceneView.RepaintAll();
+                }
+            }
+            finally
+            {
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            try
+            {
+                DrawGeneratedModeButton("2D", PetsPerspectiveMode.TwoD);
+                DrawGeneratedModeButton("2.5D", PetsPerspectiveMode.TwoPointFiveD);
+            }
+            finally
+            {
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            try
+            {
+                if (GUILayout.Button("Render Current PNG"))
+                {
+                    RenderGeneratedPreviewPng(Preview, Preview.GeneratedPreviewMode);
+                }
+
+                if (GUILayout.Button("Render 2D PNG"))
+                {
+                    RenderGeneratedPreviewPng(Preview, PetsPerspectiveMode.TwoD);
+                }
+
+                if (GUILayout.Button("Render 2.5D PNG"))
+                {
+                    RenderGeneratedPreviewPng(Preview, PetsPerspectiveMode.TwoPointFiveD);
+                }
+            }
+            finally
+            {
+                EditorGUILayout.EndHorizontal();
+            }
+        }
+
+        private void DrawGeneratedModeButton(string label, PetsPerspectiveMode mode)
+        {
+            Color previous = GUI.backgroundColor;
+            GUI.backgroundColor = Preview.GeneratedPreviewMode == mode ? new Color(0.68f, 0.86f, 1f) : Color.white;
+            if (GUILayout.Button(label))
+            {
+                Undo.RecordObject(Preview, "Set Generated PETS Preview Mode");
+                Preview.SetGeneratedPreviewMode(mode);
+                EditorUtility.SetDirty(Preview);
+                SceneView.RepaintAll();
+            }
+
+            GUI.backgroundColor = previous;
         }
 
         private static void DrawBrushToolbar()
@@ -108,7 +242,11 @@ namespace DimensionShiftEditor
                 return;
             }
 
-            DrawMap(preview);
+            if (!preview.ShowGeneratedPreview || preview.ShowGrid || preview.ShowCells)
+            {
+                DrawMap(preview);
+            }
+
             HandlePaint(preview);
         }
 
@@ -290,6 +428,11 @@ namespace DimensionShiftEditor
             }
 
             EditorUtility.SetDirty(level);
+            if (preview.ShowGeneratedPreview && preview.RebuildGeneratedPreviewAfterPaint)
+            {
+                preview.RebuildGeneratedPreview();
+            }
+
             evt.Use();
             SceneView.RepaintAll();
         }
@@ -442,6 +585,298 @@ namespace DimensionShiftEditor
             return brushKind == PetsCellKind.SwitchTo2D
                 || brushKind == PetsCellKind.SwitchToTwoPointFiveD
                 || brushKind == PetsCellKind.Exit;
+        }
+
+        private void RefreshGeneratedPreview()
+        {
+            if (Preview.ShowGeneratedPreview)
+            {
+                Preview.RebuildGeneratedPreview();
+            }
+            else
+            {
+                Preview.ClearGeneratedPreview();
+            }
+
+            SceneView.RepaintAll();
+        }
+
+        private void RebuildPreviewOnSelection()
+        {
+            if (Preview == null || Preview.EditableLevel == null || !Preview.ShowGeneratedPreview)
+            {
+                return;
+            }
+
+            Preview.RebuildGeneratedPreview();
+            SceneView.RepaintAll();
+        }
+
+        private static void RenderGeneratedPreviewPng(PetsSceneMapPreview preview, PetsPerspectiveMode mode)
+        {
+            if (preview == null || preview.EditableLevel == null)
+            {
+                NotifyRenderIssue("Render PETS Map", "Assign a PETS editable level before rendering.");
+                return;
+            }
+
+            if (!preview.ShowGeneratedPreview)
+            {
+                NotifyRenderIssue("Render PETS Map", "Enable Show Generated Preview before rendering.");
+                return;
+            }
+
+            Undo.RecordObject(preview, "Render PETS Generated Preview");
+            preview.SetGeneratedPreviewMode(mode);
+            preview.RebuildGeneratedPreview();
+
+            Transform root = preview.GeneratedPreviewRoot;
+            if (root == null || !TryCalculateRendererBounds(root, out Bounds bounds))
+            {
+                NotifyRenderIssue("Render PETS Map", "No generated preview renderers were found. Rebuild the generated preview and try again.");
+                return;
+            }
+
+            byte[] png = RenderBoundsToPng(bounds, mode, RenderWidth, RenderHeight);
+            EnsureRenderOutputFolder();
+            string assetPath = $"{RenderOutputFolder}/{SanitizeAssetName(preview.EditableLevel.name)}_{ModeSuffix(mode)}_GeneratedPreview.png";
+            string fullPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", assetPath));
+            File.WriteAllBytes(fullPath, png);
+            AssetDatabase.ImportAsset(assetPath);
+
+            Object renderedAsset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
+            Selection.activeObject = renderedAsset;
+            EditorGUIUtility.PingObject(renderedAsset);
+            Debug.Log($"Rendered PETS generated map preview to {assetPath}");
+        }
+
+        private static PetsSceneMapPreview FindOrCreateActiveScenePreview()
+        {
+            PetsSceneMapPreview preview = FindActiveScenePreview();
+            if (preview == null)
+            {
+                DimensionPrototypeSceneBuilder.EnsureSceneMapPreviewMenu();
+                preview = FindActiveScenePreview();
+            }
+
+            if (preview == null)
+            {
+                NotifyRenderIssue("Render PETS Map", "The active scene does not have a PETS scene map preview.");
+                return null;
+            }
+
+            if (preview.EditableLevel == null && DimensionPrototypeSceneBuilder.TryGetCurrentSceneEditableLevel(out PetsEditableLevelAsset editableLevel))
+            {
+                Undo.RecordObject(preview, "Assign PETS Scene Map Preview");
+                preview.EditableLevel = editableLevel;
+                EditorUtility.SetDirty(preview);
+            }
+
+            return preview;
+        }
+
+        private static PetsSceneMapPreview FindActiveScenePreview()
+        {
+            Scene scene = SceneManager.GetActiveScene();
+            if (!scene.IsValid())
+            {
+                return null;
+            }
+
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                PetsSceneMapPreview preview = roots[i].GetComponentInChildren<PetsSceneMapPreview>(true);
+                if (preview != null)
+                {
+                    return preview;
+                }
+            }
+
+            return null;
+        }
+
+        private static void NotifyRenderIssue(string title, string message)
+        {
+            if (Application.isBatchMode)
+            {
+                Debug.LogError($"{title}: {message}");
+                return;
+            }
+
+            EditorUtility.DisplayDialog(title, message, "OK");
+        }
+
+        private static byte[] RenderBoundsToPng(Bounds bounds, PetsPerspectiveMode mode, int width, int height)
+        {
+            GameObject cameraObject = new GameObject("PETS Generated Preview Render Camera")
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            GameObject lightObject = new GameObject("PETS Generated Preview Render Light")
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            RenderTexture renderTexture = null;
+            RenderTexture previousActive = RenderTexture.active;
+            Camera camera = null;
+            Texture2D image = null;
+
+            try
+            {
+                camera = cameraObject.AddComponent<Camera>();
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = new Color(0.98f, 0.98f, 0.96f, 1f);
+                camera.orthographic = true;
+                camera.nearClipPlane = 0.01f;
+                camera.farClipPlane = 2000f;
+
+                camera.transform.rotation = mode == PetsPerspectiveMode.TwoD
+                    ? Quaternion.identity
+                    : Quaternion.Euler(55f, 0f, 0f);
+                FitCameraToBounds(camera, bounds, (float)width / height);
+
+                Light light = lightObject.AddComponent<Light>();
+                light.type = LightType.Directional;
+                light.intensity = 0.95f;
+                light.shadows = LightShadows.None;
+                lightObject.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+
+                renderTexture = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32)
+                {
+                    antiAliasing = 4
+                };
+                camera.targetTexture = renderTexture;
+                RenderTexture.active = renderTexture;
+                camera.Render();
+
+                image = new Texture2D(width, height, TextureFormat.RGBA32, false);
+                image.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                image.Apply();
+                return image.EncodeToPNG();
+            }
+            finally
+            {
+                RenderTexture.active = previousActive;
+                if (camera != null)
+                {
+                    camera.targetTexture = null;
+                }
+
+                if (renderTexture != null)
+                {
+                    renderTexture.Release();
+                    Object.DestroyImmediate(renderTexture);
+                }
+
+                if (image != null)
+                {
+                    Object.DestroyImmediate(image);
+                }
+
+                Object.DestroyImmediate(lightObject);
+                Object.DestroyImmediate(cameraObject);
+            }
+        }
+
+        private static void FitCameraToBounds(Camera camera, Bounds bounds, float aspect)
+        {
+            Quaternion inverseRotation = Quaternion.Inverse(camera.transform.rotation);
+            Vector3[] corners = BoundsCorners(bounds);
+            float maxX = 0f;
+            float maxY = 0f;
+            float maxZ = 0f;
+
+            for (int i = 0; i < corners.Length; i++)
+            {
+                Vector3 local = inverseRotation * (corners[i] - bounds.center);
+                maxX = Mathf.Max(maxX, Mathf.Abs(local.x));
+                maxY = Mathf.Max(maxY, Mathf.Abs(local.y));
+                maxZ = Mathf.Max(maxZ, Mathf.Abs(local.z));
+            }
+
+            camera.orthographicSize = Mathf.Max(maxY, maxX / Mathf.Max(0.001f, aspect), 0.5f) * RenderPadding;
+            float distance = Mathf.Max(20f, maxZ + Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z) + 8f);
+            camera.transform.position = bounds.center - camera.transform.forward * distance;
+            camera.farClipPlane = distance + maxZ + 100f;
+        }
+
+        private static bool TryCalculateRendererBounds(Transform root, out Bounds bounds)
+        {
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            bounds = default;
+            bool hasBounds = false;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = renderer.bounds;
+                    hasBounds = true;
+                    continue;
+                }
+
+                bounds.Encapsulate(renderer.bounds);
+            }
+
+            return hasBounds;
+        }
+
+        private static Vector3[] BoundsCorners(Bounds bounds)
+        {
+            Vector3 min = bounds.min;
+            Vector3 max = bounds.max;
+            return new[]
+            {
+                new Vector3(min.x, min.y, min.z),
+                new Vector3(min.x, min.y, max.z),
+                new Vector3(min.x, max.y, min.z),
+                new Vector3(min.x, max.y, max.z),
+                new Vector3(max.x, min.y, min.z),
+                new Vector3(max.x, min.y, max.z),
+                new Vector3(max.x, max.y, min.z),
+                new Vector3(max.x, max.y, max.z)
+            };
+        }
+
+        private static void EnsureRenderOutputFolder()
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/DimensionShift"))
+            {
+                AssetDatabase.CreateFolder("Assets", "DimensionShift");
+            }
+
+            if (!AssetDatabase.IsValidFolder(RenderOutputFolder))
+            {
+                AssetDatabase.CreateFolder("Assets/DimensionShift", "GeneratedPreviews");
+            }
+        }
+
+        private static string SanitizeAssetName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return "PETS_Map";
+            }
+
+            string sanitized = value.Trim();
+            char[] invalidCharacters = Path.GetInvalidFileNameChars();
+            for (int i = 0; i < invalidCharacters.Length; i++)
+            {
+                sanitized = sanitized.Replace(invalidCharacters[i], '_');
+            }
+
+            return sanitized.Replace(' ', '_');
+        }
+
+        private static string ModeSuffix(PetsPerspectiveMode mode)
+        {
+            return mode == PetsPerspectiveMode.TwoD ? "2D" : "2_5D";
         }
     }
 }

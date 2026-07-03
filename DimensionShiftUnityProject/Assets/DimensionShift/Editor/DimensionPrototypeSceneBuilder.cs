@@ -91,6 +91,7 @@ namespace DimensionShiftEditor
             PetsSceneMapPreview preview = EnsureSceneMapPreview(scene);
             Undo.RecordObject(preview, "Ensure PETS Scene Map Preview");
             preview.EditableLevel = editableLevel;
+            preview.RebuildGeneratedPreview();
             EditorUtility.SetDirty(preview);
             EditorSceneManager.MarkSceneDirty(scene);
             Selection.activeObject = preview.gameObject;
@@ -108,6 +109,7 @@ namespace DimensionShiftEditor
 
             PetsSceneMapPreview preview = EnsureSceneMapPreview(scene);
             preview.EditableLevel = editableLevel;
+            preview.RebuildGeneratedPreview();
 
             EnsureSceneFolder();
             EditorSceneManager.SaveScene(scene, PainterTestScenePath);
@@ -169,6 +171,7 @@ namespace DimensionShiftEditor
             PetsSceneMapPreview preview = EnsureSceneMapPreview(scene);
             Undo.RecordObject(preview, "Bind PETS Scene Map Preview");
             preview.EditableLevel = editableLevel;
+            preview.RebuildGeneratedPreview();
             EditorUtility.SetDirty(preview);
 
             EditorUtility.SetDirty(bootstrap);
